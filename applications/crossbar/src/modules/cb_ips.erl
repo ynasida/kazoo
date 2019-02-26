@@ -153,7 +153,7 @@ delete(Context, IP) ->
 
 -spec delete(cb_context:context(), path_token(), req_nouns()) -> cb_context:context().
 delete(Context, IP, [{<<"ips">>, [IP]}]) ->
-    delete_ip(Context, IP);
+    delete_ips_from_db(Context, cb_context:fetch(Context, 'release_ips', []));
 delete(Context, IP, [{<<"ips">>, [IP]}, {<<"accounts">>, [_]}]) ->
     release_ips(Context).
 
