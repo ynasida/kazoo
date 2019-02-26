@@ -123,18 +123,30 @@ pp(#kazoo_model{accounts=Account
       ,{'numbers', Numbers}
       ,{'ratedecks', Ratedecks}
       ,{'service_plans', ServicePlans}
-      ,{'dedicated_ips', maps:keys(IPs)}
+      ,{'dedicated_ips', [printable_ip(IP) || IP <- maps:to_list(IPs)]}
       ,{'request_id', maps:get('request_id', API, 'undefined')}
       ]).
 
 -spec printable(model()) -> iodata().
 printable(#kazoo_model{}=Model) ->
     ["{"
-    ,kz_binary:join([io_lib:format("~s: ~p", [Key, Value]) || {Key, Value} <- pp(Model)]
+    ,kz_binary:join([io_lib:format("~s: ~s", [Key, printable_value(Value)]) || {Key, Value} <- pp(Model)]
                    ,<<",">>
                    )
     ,"}"
     ].
+
+printable_ip({IP, Info}) ->
+    case maps:get('assigned_to', Info, 'undefined') of
+        'undefined' -> IP;
+        AssignedTo -> iolist_to_binary([IP, "@", AssignedTo])
+    end.
+
+printable_value(<<Binary/binary>>) -> Binary;
+printable_value([<<_Binary/binary>>|_]=Bins) ->
+    kz_binary:join(Bins, <<",">>);
+printable_value(Tuple) when is_tuple(Tuple) ->
+    tuple_to_list(Tuple).
 
 -spec api(model()) -> pqc_cb_api:state().
 api(#kazoo_model{'api'=API}) -> API.
