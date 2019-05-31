@@ -1020,7 +1020,7 @@ fix_accounts_tree(AccountsMap) ->
 
 -spec fix_account_tree(kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
 fix_account_tree(AccountId, Tree) ->
-    Updates =[{kzd_accounts:path_tree(), Tree}],
+    Updates = [{kzd_accounts:path_tree(), Tree}],
     maybe_log_doc_update(kzd_accounts:update(AccountId, Updates)
                         ,'undefined'
                         ,<<"    !!! failed to save account definitions">>
@@ -1056,7 +1056,7 @@ fix_port_requests_tree(AccountId, Tree) ->
         {'ok', JObjs} ->
             UpdatedJObjs = [kzd_port_requests:set_pvt_tree(JObj, Tree)
                             || J <- JObjs,
-                               JObj <- [kz_json:get_value(<<"doc">>, J)],
+                               JObj <- [kz_json:get_json_value(<<"doc">>, J)],
                                Tree =/= kzd_port_requests:pvt_tree(JObj)
                            ],
             maybe_log_doc_update(kz_datamgr:save_docs(?KZ_PORT_REQUESTS_DB, UpdatedJObjs)
@@ -1082,16 +1082,16 @@ ensure_tree_is_tree(State, Family, Depth) ->
 
 -spec ensure_tree_is_tree_fold(ensure_state(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
                                       ensure_state().
-ensure_tree_is_tree_fold(#{fixed_trees := FixedTrees
-                          }=State
-                        ,AccountId, Tree) ->
+ensure_tree_is_tree_fold(#{fixed_trees := FixedTrees}=State
+                        ,AccountId
+                        ,Tree
+                        ) ->
     UpdatedTree = ensure_tree_is_tree_fold(State, AccountId, Tree, []),
-    UniqTree = kz_term:uniq_list(UpdatedTree),
-    case UniqTree =:= Tree of
-        'true' ->
+    case kz_term:uniq_list(UpdatedTree) of
+        Tree ->
             %% tree is okay
             State;
-        'false' ->
+        UniqTree ->
             %% tree is fixed
             NewDepth = kz_term:to_binary(length(UniqTree)),
             State#{fixed_trees => maps:update_with(NewDepth
