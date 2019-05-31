@@ -529,14 +529,17 @@ get_view_json(Path) ->
 add_aggregate_device(_, 'undefined') -> 'ok';
 add_aggregate_device(Db, Device) ->
     DeviceId = kz_doc:id(Device),
-    _ = case kz_datamgr:lookup_doc_rev(?KZ_SIP_DB, DeviceId) of
-            {'ok', Rev} ->
-                lager:debug("aggregating device ~s/~s", [Db, DeviceId]),
-                kz_datamgr:ensure_saved(?KZ_SIP_DB, kz_doc:set_revision(Device, Rev));
-            {'error', 'not_found'} ->
-                lager:debug("aggregating device ~s/~s", [Db, DeviceId]),
-                kz_datamgr:ensure_saved(?KZ_SIP_DB, kz_doc:delete_revision(Device))
-        end,
+    Update = case kz_datamgr:lookup_doc_rev(?KZ_SIP_DB, DeviceId) of
+                 {'ok', Rev} ->
+                     lager:debug("aggregating device ~s/~s", [Db, DeviceId]),
+                     [{kz_doc:path_revision(), Rev}];
+                 {'error', 'not_found'} ->
+                     lager:debug("aggregating device ~s/~s", [Db, DeviceId]),
+                     [{kz_doc:path_revision(), 'null'}]
+             end,
+    kz_datamgr:update_doc(?KZ_SIP_DB, kz_doc:id(Device), [{'update', Update}
+                                                         ,{'ensure_saved', 'true'}
+                                                         ]),
     'ok'.
 
 %%------------------------------------------------------------------------------
