@@ -26,15 +26,15 @@ Using [Pivot](https://docs.2600hz.com/dev/applications/pivot/doc/requests/), con
 
 ### Monitoring
 
-By handling hangup causes (`RECOVERY_ON_TIMER_EXIRE` anyone?) and registration statuses, infer if a client site is experiencing issues and proactively reach out.
+By handling hangup causes (`RECOVERY_ON_TIMER_EXPIRE` anyone?) and registration statuses, infer if a client site is experiencing issues and proactively reach out.
 
 Check destinations dialed and correlate with fraud checks. Use the [Channels API](https://docs.2600hz.com/dev/applications/crossbar/doc/channels/) to shutdown the calls.
 
 ### Billing
 
 Receive CDR data:
-- Realtime via [websockets](https://docs.2600hz.com/dev/applications/crossbar/doc/websockets/)
-- Almost realtime via [webhooks](https://docs.2600hz.com/dev/applications/webhooks/doc/events/channels/)
+- Real-time via [websockets](https://docs.2600hz.com/dev/applications/crossbar/doc/websockets/)
+- Almost real-time via [webhooks](https://docs.2600hz.com/dev/applications/webhooks/doc/events/channels/)
 - Query the [CDRs API](https://docs.2600hz.com/dev/applications/crossbar/doc/cdrs/)
 - Have KAZOO store them via [storage plans](https://docs.2600hz.com/dev/applications/crossbar/doc/storage/)
   - S3, Google Storage/Drive, Azure, Dropbox, FTP sites, HTTP URL, OneDrive

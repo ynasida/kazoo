@@ -18,7 +18,7 @@ If your application targets more than one language, you can configure that infor
 
 Submit information about how to contact you for support, technical questions, and billing information.
 
-![Contect Information](images/appex/contact_information.png "Contact Information")
+![Contact Information](images/appex/contact_information.png "Contact Information")
 
 ### Co-marketing Opportunities
 
@@ -97,4 +97,4 @@ Depending on the application, various testing should be performed:
 - Any caveats or known issues
 - All external services contacted (if any)
 
-# Exicted to see what you make
+# Excited to see what you make
