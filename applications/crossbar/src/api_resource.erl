@@ -31,6 +31,9 @@
         ,delete_resource/2
         ,delete_completed/2
         ,is_conflict/2
+        ,multiple_choices/2
+        ,generate_etag/2
+        ,expires/2
 
          %% Content
         ,to_json/2
@@ -40,17 +43,17 @@
         ,to_xml/2
         ,send_file/2
 
-        ,from_json/2, from_binary/2, from_form/2
-        ,multiple_choices/2
-        ,generate_etag/2
-        ,expires/2
+        ,from_json/2
+        ,from_binary/2
+        ,from_form/2
+
         ,get_range/2
         ]).
 
 -include("crossbar.hrl").
 
 %%%=============================================================================
-%%% Startup and shutdown of request
+%%% CowboyHTTPRest API Callbacks
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
@@ -250,6 +253,10 @@ find_path(Req, Opts) ->
             Magic
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec terminate(any(), cowboy_req:req(), cb_context:context()) -> 'ok'.
 terminate(_Reason, Req, Context) ->
     lager:debug("session finished: ~p", [_Reason]),
@@ -287,10 +294,6 @@ pretty_metric(N, 'true') when N < 0 ->
 pretty_metric(N, 'true') ->
     kz_util:pretty_print_bytes(N).
 
-%%%=============================================================================
-%%% CowboyHTTPRest API Callbacks
-%%%=============================================================================
-
 %%------------------------------------------------------------------------------
 %% @doc Set `allow' and `allowed' parameters.
 %% @end
@@ -312,6 +315,10 @@ known_methods(Req, Context) ->
             }
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec allowed_methods(cowboy_req:req(), cb_context:context()) ->
                              {http_methods() | 'stop', cowboy_req:req(), cb_context:context()}.
 allowed_methods(Req, Context) ->
@@ -402,6 +409,10 @@ maybe_allow_method(Req, Context, Methods, Verb) ->
             api_util:stop(Req, cb_context:add_system_error('invalid_method', Context))
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec malformed_request(cowboy_req:req(), cb_context:context()) ->
                                {boolean(), cowboy_req:req(), cb_context:context()}.
 malformed_request(Req, Context) ->
@@ -441,12 +452,20 @@ validate_account_resource(Context, [AccountId, PathToken]) ->
 validate_account_resource(Context, AccountArgs) ->
     apply('cb_accounts', 'validate_resource', [Context | AccountArgs]).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec is_authorized(cowboy_req:req(), cb_context:context()) ->
                            {'true' | {'false', <<>>}, cowboy_req:req(), cb_context:context()} |
                            api_util:stop_return().
 is_authorized(Req, Context) ->
     api_util:is_authentic(Req, Context).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec forbidden(cowboy_req:req(), cb_context:context()) ->
                        {'false', cowboy_req:req(), cb_context:context()}.
 forbidden(Req0, Context0) ->
@@ -456,11 +475,19 @@ forbidden(Req0, Context0) ->
             {not IsPermitted, Req1, Context1}
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec valid_content_headers(cowboy_req:req(), cb_context:context()) ->
                                    {'true', cowboy_req:req(), cb_context:context()}.
 valid_content_headers(Req, Context) ->
     {'true', Req, Context}.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec known_content_type(cowboy_req:req(), cb_context:context()) ->
                                 {boolean(), cowboy_req:req(), cb_context:context()}.
 known_content_type(Req, Context) ->
@@ -485,11 +512,19 @@ known_content_type(Req, Context, _ReqVerb) ->
            end,
     api_util:is_known_content_type(Req1, Context).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec valid_entity_length(cowboy_req:req(), cb_context:context()) ->
                                  {'true', cowboy_req:req(), cb_context:context()}.
 valid_entity_length(Req, Context) ->
     {'true', Req, Context}.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec options(cowboy_req:req(), cb_context:context()) ->
                      {'ok', cowboy_req:req(), cb_context:context()}.
 options(Req0, Context) ->
@@ -504,6 +539,10 @@ options(Req0, Context) ->
             {'ok', Req0, Context}
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -type content_type_callbacks() :: [{{kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()}, atom()} |
                                    {kz_term:ne_binary(), atom()}
                                   ].
@@ -540,6 +579,10 @@ content_types_provided(Req, Context, CTPs) ->
     lager:debug("ctp: ~p", [CTP]),
     {CTP, Req, Context}.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec content_types_accepted(cowboy_req:req(), cb_context:context()) ->
                                     {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
 content_types_accepted(Req0, Context0) ->
@@ -593,7 +636,6 @@ set_content_type_header(#{headers := Headers}=Req, ?NE_BINARY=CT) ->
 set_content_type_header(#{headers := Headers}=Req, {Type, SubType, _}) ->
     Req#{headers => maps:put(<<"content-type">>, <<Type/binary, "/", SubType/binary>>, Headers)}.
 
-
 -type content_type_fun() :: {content_type(), atom()}.
 -type content_types_funs() :: [content_type_fun()].
 
@@ -637,6 +679,10 @@ content_type_accepted_fold({Type, SubType}, Acc, Fun, CT) ->
 content_type_accepted_fold({_,_,_}=EncType, Acc, Fun, _CT) ->
     [{EncType, Fun} | Acc].
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec languages_provided(cowboy_req:req(), cb_context:context()) ->
                                 {kz_term:ne_binaries(), cowboy_req:req(), cb_context:context()}.
 languages_provided(Req0, Context0) ->
@@ -655,10 +701,18 @@ languages_provided(Req0, Context0) ->
             {cb_context:languages_provided(Context1) ++ [A], Req0, Context1}
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec charsets_provided(cowboy_req:req(), cb_context:context()) -> 'no_call'.
 charsets_provided(_Req, _Context) ->
     'no_call'.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec resource_exists(cowboy_req:req(), cb_context:context()) ->
                              {boolean(), cowboy_req:req(), cb_context:context()}.
 resource_exists(Req, Context) ->
@@ -706,18 +760,30 @@ does_request_validate(Req, Context0) ->
             api_util:stop(Req, cb_context:set_resp_error_msg(Context2, Msg))
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec moved_temporarily(cowboy_req:req(), cb_context:context()) ->
                                {'false', cowboy_req:req(), cb_context:context()}.
 moved_temporarily(Req, Context) ->
     lager:debug("run: moved_temporarily"),
     {'false', Req, Context}.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec moved_permanently(cowboy_req:req(), cb_context:context()) ->
                                {'false', cowboy_req:req(), cb_context:context()}.
 moved_permanently(Req, Context) ->
     lager:debug("run: moved_permanently"),
     {'false', Req, Context}.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec previously_existed(cowboy_req:req(), cb_context:context()) ->
                                 {'false', cowboy_req:req(), cb_context:context()}.
 previously_existed(Req, State) ->
@@ -736,18 +802,30 @@ allow_missing_post(Req, Context) ->
     lager:debug("run: allow_missing_post when req_verb = ~s", [cb_context:req_verb(Context)]),
     {cowboy_req:method(Req) =:= ?HTTP_POST, Req, Context}.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec delete_resource(cowboy_req:req(), cb_context:context()) ->
                              {boolean() | 'stop', cowboy_req:req(), cb_context:context()}.
 delete_resource(Req, Context) ->
     lager:debug("run: delete_resource"),
     api_util:execute_request(Req, Context).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec delete_completed(cowboy_req:req(), cb_context:context()) ->
                               {boolean(), cowboy_req:req(), cb_context:context()}.
 delete_completed(Req, Context) ->
     lager:debug("run: delete_completed"),
     api_util:create_push_response(Req, Context).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec is_conflict(cowboy_req:req(), cb_context:context()) ->
                          {boolean(), cowboy_req:req(), cb_context:context()}.
 is_conflict(Req, Context) ->
@@ -760,6 +838,200 @@ is_conflict(Req, Context, _RespCode) ->
     lager:debug("run: is_conflict: false"),
     {'false', Req, Context}.
 
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec multiple_choices(cowboy_req:req(), cb_context:context()) ->
+                              {'false', cowboy_req:req(), cb_context:context()}.
+multiple_choices(Req, Context) ->
+    {'false', Req, Context}.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec generate_etag(cowboy_req:req(), cb_context:context()) ->
+                           {kz_term:api_ne_binary(), cowboy_req:req(), cb_context:context()}.
+generate_etag(Req0, Context0) ->
+    Event = api_util:create_event_name(Context0, <<"etag">>),
+    {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
+    case cb_context:resp_etag(Context1) of
+        'automatic' ->
+            {Content, _} = api_util:create_resp_content(Req1, Context1),
+            Tag = kz_term:to_hex_binary(crypto:hash('md5', Content)),
+            {list_to_binary([$", Tag, $"]), Req1, cb_context:set_resp_etag(Context1, Tag)};
+        'undefined' ->
+            {'undefined', Req1, cb_context:set_resp_etag(Context1, 'undefined')};
+        Tag ->
+            {list_to_binary([$", Tag, $"]), Req1, cb_context:set_resp_etag(Context1, Tag)}
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec expires(cowboy_req:req(), cb_context:context()) ->
+                     {calendar:datetime(), cowboy_req:req(), cb_context:context()}.
+expires(Req, Context) ->
+    Event = api_util:create_event_name(Context, <<"expires">>),
+    Context1 = crossbar_bindings:fold(Event, Context),
+    {cb_context:resp_expires(Context1), Req, Context1}.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec send_file(cowboy_req:req(), cb_context:context()) -> api_util:pull_file_response_return().
+send_file(Req, Context) ->
+    lager:debug("run: send_file"),
+    api_util:create_pull_response(Req, Context, fun api_util:create_resp_file/2).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec to_xml(cowboy_req:req(), cb_context:context()) ->
+                    {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
+to_xml(Req, Context) ->
+    to_xml(Req, Context, to_fun(Context, 'to_xml').
+
+-spec to_xml(cowboy_req:req(), cb_context:context(), kz_term:api_binary()) ->
+                    {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
+to_xml(Req, Context, 'to_xml') ->
+    lager:debug("run: to_xml"),
+    case cb_context:fetch(Context, 'is_chunked') of
+        'true' ->
+            to_chunk(<<"to_xml">>, Req, cb_context:add_resp_header(Context0, <<"content-type">>, <<"text/xml">>));
+        _ ->
+            Event = to_fun_event_name(<<"to_xml">>, Context),
+            {Req1, Context1} = crossbar_bindings:fold(Event, {Req, Context}),
+            api_util:create_pull_response(Req1
+                                         ,cb_context:add_resp_header(Context1, <<"content-type">>, <<"text/xml">>)
+                                         ,fun api_util:create_xml_resp_content/2
+                                         )
+    end;
+to_xml(Req, Context, AcceptOverride) ->
+    lager:debug("calling ~s instead of to_xml to render response", [AcceptOverride]),
+    (?MODULE):Fun(Req, Context, AcceptOverride).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec to_json(cowboy_req:req(), cb_context:context()) ->
+                    {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
+to_json(Req, Context) ->
+    to_json(Req, Context, to_fun(Context, 'to_json').
+
+-spec to_json(cowboy_req:req(), cb_context:context(), kz_term:api_binary()) ->
+                    {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
+to_json(Req, Context, 'to_json') ->
+    lager:debug("run: to_json"),
+    case cb_context:fetch(Context, 'is_chunked') of
+        'true' ->
+            to_chunk(<<"to_json">>, Req, cb_context:add_resp_header(Context0, <<"content-type">>, <<"application/json">>));
+        _ ->
+            Event = to_fun_event_name(<<"to_json">>, Context),
+            {Req1, Context1} = crossbar_bindings:fold(Event, {Req, Context}),
+            api_util:create_csv_pull_response(Req1
+                                             ,cb_context:add_resp_header(Context1, <<"content-type">>, <<"application/json">>)
+                                             ,fun api_util:create_json_resp_content/2
+                                             )
+    end;
+to_json(Req, Context, AcceptOverride) ->
+    lager:debug("calling ~s instead of to_json to render response", [AcceptOverride]),
+    (?MODULE):Fun(Req, Context, AcceptOverride).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec to_csv(cowboy_req:req(), cb_context:context()) ->
+                    {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
+to_csv(Req, Context) ->
+    to_csv(Req, Context, to_fun(Context, 'to_csv').
+
+-spec to_csv(cowboy_req:req(), cb_context:context(), kz_term:api_binary()) ->
+                    {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
+to_csv(Req, Context, 'to_csv') ->
+    lager:debug("run: to_csv"),
+    case cb_context:fetch(Context, 'is_chunked') of
+        'true' ->
+            to_chunk(<<"to_csv">>, Req, cb_context:add_resp_header(Context0, <<"content-type">>, <<"text/csv">>));
+        _ ->
+            Event = to_fun_event_name(<<"to_csv">>, Context),
+            {Req1, Context1} = crossbar_bindings:fold(Event, {Req, Context}),
+            api_util:create_csv_pull_response(Req1
+                                         ,cb_context:add_resp_header(Context1, <<"content-type">>, <<"text/csv">>)
+                                         ,fun api_util:create_csv_resp_content/2
+                                         )
+    end;
+to_csv(Req, Context, AcceptOverride) ->
+    lager:debug("calling ~s instead of to_csv to render response", [AcceptOverride]),
+    (?MODULE):Fun(Req, Context, AcceptOverride).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec to_pdf(cowboy_req:req(), cb_context:context()) ->
+                    {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
+to_pdf(Req, Context) ->
+    to_pdf(Req, Context, to_fun(Context, 'to_pdf').
+
+-spec to_pdf(cowboy_req:req(), cb_context:context(), kz_term:api_binary()) ->
+                    {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
+to_pdf(Req, Context, 'to_pdf') ->
+    lager:debug("run: to_pdf"),
+    case cb_context:fetch(Context, 'is_chunked') of
+        'true' ->
+            to_chunk(<<"to_pdf">>, Req, cb_context:add_resp_header(Context0, <<"content-type">>, <<"text/pdf">>));
+        _ ->
+            Event = to_fun_event_name(<<"to_pdf">>, Context),
+            {Req1, Context1} = crossbar_bindings:fold(Event, {Req, Context}),
+            api_util:create_pdf_pull_response(Req1
+                                         ,cb_context:add_resp_header(Context1, <<"content-type">>, <<"text/pdf">>)
+                                         ,fun api_util:create_pdf_resp_content/2
+                                         )
+    end;
+to_pdf(Req, Context, AcceptOverride) ->
+    lager:debug("calling ~s instead of to_pdf to render response", [AcceptOverride]),
+    (?MODULE):Fun(Req, Context, AcceptOverride).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec to_binary(cowboy_req:req(), cb_context:context()) ->
+                    {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
+to_binary(Req, Context) ->
+    to_binary(Req, Context, to_fun(Context, 'to_binary').
+
+-spec to_binary(cowboy_req:req(), cb_context:context(), kz_term:api_binary()) ->
+                    {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
+to_binary(Req, Context, 'to_binary') ->
+    lager:debug("run: to_binary"),
+    case cb_context:fetch(Context, 'is_chunked') of
+        'true' ->
+            to_chunk(<<"to_binary">>, Req, cb_context:add_resp_header(Context0, <<"content-type">>, <<"text/binary">>));
+        _ ->
+            Event = to_fun_event_name(<<"to_binary">>, Context),
+            {Req1, Context1} = crossbar_bindings:fold(Event, {Req, Context}),
+            api_util:create_binary_pull_response(Req1
+                                         ,cb_context:add_resp_header(Context1, <<"content-type">>, <<"text/binary">>)
+                                         ,fun api_util:create_binary_resp_content/2
+                                         )
+    end;
+to_binary(Req, Context, AcceptOverride) ->
+    lager:debug("calling ~s instead of to_binary to render response", [AcceptOverride]),
+    (?MODULE):Fun(Req, Context, AcceptOverride).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec from_binary(cowboy_req:req(), cb_context:context()) ->
                          {boolean(), cowboy_req:req(), cb_context:context()}.
 from_binary(Req0, Context0) ->
@@ -770,6 +1042,10 @@ from_binary(Req0, Context0) ->
         Else -> Else
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec from_json(cowboy_req:req(), cb_context:context()) ->
                        {boolean(), cowboy_req:req(), cb_context:context()}.
 from_json(Req0, Context0) ->
@@ -780,6 +1056,10 @@ from_json(Req0, Context0) ->
         Else -> Else
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec from_form(cowboy_req:req(), cb_context:context()) ->
                        {boolean(), cowboy_req:req(), cb_context:context()}.
 from_form(Req0, Context0) ->
@@ -790,6 +1070,15 @@ from_form(Req0, Context0) ->
         Else -> Else
     end.
 
+
+%%%=============================================================================
+%%% Internal functions
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec create_from_response(cowboy_req:req(), cb_context:context()) ->
                                   {boolean(), cowboy_req:req(), cb_context:context()}.
 create_from_response(Req, Context) ->
@@ -820,81 +1109,11 @@ content_type_provided_fun(Context) ->
         [] -> 'to_json'
     end.
 
--spec to_json(cowboy_req:req(), cb_context:context()) ->
-                     {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
-to_json(Req, Context) ->
-    to_json(Req, Context, accept_override(Context)).
 
-to_json(Req0, Context0, 'undefined') ->
-    case cb_context:fetch(Context0, 'is_chunked') of
-        'true' -> to_chunk(<<"to_json">>, Req0, Context0);
-        _ ->
-            lager:debug("run: to_json"),
-            Event = to_fun_event_name(<<"to_json">>, Context0),
-            {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
-            api_util:create_pull_response(Req1, Context1)
-    end;
-to_json(Req, Context, <<"csv">>) ->
-    lager:debug("overriding json with csv builder"),
-    to_csv(Req, Context);
-to_json(Req, Context, <<"pdf">>) ->
-    lager:debug("overriding json with pdf builder"),
-    to_pdf(Req, Context);
-to_json(Req, Context, Accept) ->
-    case to_fun(Context, Accept, 'to_json') of
-        'to_json' -> to_json(Req, Context, 'undefined');
-        Fun ->
-            lager:debug("calling ~s instead of to_json to render response", [Fun]),
-            (?MODULE):Fun(Req, Context)
-    end.
-
--spec to_binary(cowboy_req:req(), cb_context:context()) ->
-                       {binary() | 'stop', cowboy_req:req(), cb_context:context()}.
-to_binary(Req, Context) ->
-    to_binary(Req, Context, accept_override(Context)).
-
--spec to_binary(cowboy_req:req(), cb_context:context(), kz_term:api_ne_binary()) ->
-                       {binary() | 'stop', cowboy_req:req(), cb_context:context()}.
-to_binary(Req, Context, 'undefined') ->
-    lager:debug("run: to_binary"),
-    RespData = cb_context:resp_data(Context),
-    Event = api_util:create_event_name(Context, <<"to_binary">>),
-    _ = crossbar_bindings:map(Event, {Req, Context}),
-    %% Handle HTTP range header
-    case kz_term:is_ne_binary(RespData)
-        andalso cb_context:req_header(Context, <<"range">>)
-    of
-        'false' ->
-            {<<>>, api_util:set_resp_headers(Req, Context), Context};
-        'undefined' ->
-            {RespData, api_util:set_resp_headers(Req, Context), Context};
-        RangeHeader ->
-            RangeData={Content, Start, End, Length, FileLength} = get_range(RespData, RangeHeader),
-            ErrorCode = resp_error_code_for_range(RangeData),
-            Setters = [{fun cb_context:set_resp_data/2, Content}
-                      ,{fun cb_context:set_resp_error_code/2, ErrorCode}
-                      ,{fun cb_context:add_resp_headers/2
-                       ,#{<<"content-range">> => kz_term:to_binary(io_lib:fwrite("bytes ~B-~B/~B", [Start, End, FileLength]))
-                         ,<<"accept-ranges">> => <<"bytes">>
-                         }
-                       }
-                      ],
-            NewContext = cb_context:setters(Context, Setters),
-            %% Respond, possibly with 206
-            lager:debug("replying with ~p", [ErrorCode]),
-            Req1 = cowboy_req:reply(kz_term:to_binary(ErrorCode), cb_context:resp_headers(NewContext), Content, Req),
-            {'stop', Req1, NewContext}
-    end;
-
-to_binary(Req, Context, Accept) ->
-    lager:debug("request has overridden accept header: ~s", [Accept]),
-    case to_fun(Context, Accept, 'to_binary') of
-        'to_binary' -> to_binary(Req, Context, 'undefined');
-        Fun ->
-            lager:debug("calling ~s instead of to_binary to render response", [Fun]),
-            (?MODULE):Fun(Req, Context)
-    end.
-
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -type range_response() :: {kz_term:ne_binary(), pos_integer(), pos_integer(), pos_integer(), pos_integer()}.
 
 -spec get_range(kz_term:ne_binary(), binary()) -> range_response().
@@ -915,22 +1134,21 @@ get_range(Data, RangeHeader) ->
     <<_:Start/binary, Content:ContentLength/binary, _/binary>> = Data,
     {Content, Start, End - 1, ContentLength, FileLength}.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec resp_error_code_for_range(range_response()) -> 200 | 206.
 resp_error_code_for_range({_Content, _Start, _End, FileLength, FileLength}) -> 200;
 resp_error_code_for_range({_Content, _Start, _End, _Length, _FileLength}) -> 206.
 
--spec send_file(cowboy_req:req(), cb_context:context()) -> api_util:pull_file_response_return().
-send_file(Req, Context) ->
-    lager:debug("run: send_file"),
-    api_util:create_pull_response(Req, Context, fun api_util:create_resp_file/2).
-
--spec to_xml(cowboy_req:req(), cb_context:context()) -> api_util:pull_file_response_return().
-to_xml(Req, Context) ->
-    lager:debug("run: to_xml"),
-    api_util:create_pull_response(Req
-                                 ,cb_context:add_resp_header(Context, <<"content-type">>, <<"text/xml">>)
-                                 ,fun api_util:create_xml_resp_content/2
-                                 ).
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec to_fun(cb_context:context(), atom()) -> atom().
+to_fun(Context, Default) ->
+    to_fun(Context, cb_context:req_value(Context, <<"accept">>), Default).
 
 -spec to_fun(cb_context:context(), kz_term:ne_binary(), atom()) -> atom().
 to_fun(Context, Accept, Default) ->
@@ -961,47 +1179,10 @@ accept_matches_provided(Major, Minor, CTPs) ->
               end, CTPs
              ).
 
--spec to_csv(cowboy_req:req(), cb_context:context()) ->
-                    {iolist(), cowboy_req:req(), cb_context:context()}.
-to_csv(Req0, Context0) ->
-    case cb_context:fetch(Context0, 'is_chunked') of
-        'true' ->
-            to_chunk(<<"to_csv">>, Req0, cb_context:add_resp_header(Context0, <<"content-type">>, <<"text/csv">>));
-        _ ->
-            lager:debug("run: to_csv"),
-            Event = to_fun_event_name(<<"to_csv">>, Context0),
-            {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
-            api_util:create_pull_response(Req1
-                                         ,cb_context:add_resp_header(Context1, <<"content-type">>, <<"text/csv">>)
-                                         ,fun api_util:create_csv_resp_content/2
-                                         )
-    end.
-
--spec to_pdf(cowboy_req:req(), cb_context:context()) ->
-                    {binary(), cowboy_req:req(), cb_context:context()}.
-to_pdf(Req, Context) ->
-    lager:debug("run: to_pdf"),
-    Event = to_fun_event_name(<<"to_pdf">>, Context),
-    {Req1, Context1} = crossbar_bindings:fold(Event, {Req, Context}),
-    to_pdf(Req1, Context1, cb_context:resp_data(Context1)).
-
--spec to_pdf(cowboy_req:req(), cb_context:context(), kz_term:api_binary()) ->
-                    {binary(), cowboy_req:req(), cb_context:context()}.
-to_pdf(Req, Context, 'undefined') ->
-    to_pdf(Req, Context, kz_pdf:error_empty());
-to_pdf(Req, Context, <<>>) ->
-    to_pdf(Req, Context, kz_pdf:error_empty());
-to_pdf(Req, Context, RespData) ->
-    DefaultCD = <<"attachment; filename=\"file.pdf\"">>,
-    CD = maps:get(<<"content-disposition">>, cb_context:resp_headers(Context), DefaultCD),
-    RespHeaders = #{<<"content-type">> => <<"application/pdf">>
-                   ,<<"content-disposition">> => CD
-                   },
-    {RespData
-    ,api_util:set_resp_headers(Req, cb_context:add_resp_headers(Context, RespHeaders))
-    ,Context
-    }.
-
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec to_chunk(kz_term:ne_binary(), cowboy_req:req(), cb_context:context()) ->
                       {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 to_chunk(ToFun, Req, Context) ->
@@ -1216,40 +1397,12 @@ finish_chunked_response(#{total_queried := TotalQueried
     api_util:close_chunk_json_envelope(Req, cb_context:set_resp_envelope(Context, Paging)),
     {'stop', Req, Context}.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec to_fun_event_name(kz_term:ne_binary(), cb_contextL:context()) -> kz_term:ne_binary().
 to_fun_event_name(ToThing, Context) ->
     [{Mod, _Params}|_] = cb_context:req_nouns(Context),
     Verb = cb_context:req_verb(Context),
     api_util:create_event_name(Context, [ToThing, kz_term:to_lower_binary(Verb), Mod]).
-
--spec accept_override(cb_context:context()) -> kz_term:api_ne_binary().
-accept_override(Context) ->
-    cb_context:req_value(Context, <<"accept">>).
-
--spec multiple_choices(cowboy_req:req(), cb_context:context()) ->
-                              {'false', cowboy_req:req(), cb_context:context()}.
-multiple_choices(Req, Context) ->
-    {'false', Req, Context}.
-
--spec generate_etag(cowboy_req:req(), cb_context:context()) ->
-                           {kz_term:api_ne_binary(), cowboy_req:req(), cb_context:context()}.
-generate_etag(Req0, Context0) ->
-    Event = api_util:create_event_name(Context0, <<"etag">>),
-    {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
-    case cb_context:resp_etag(Context1) of
-        'automatic' ->
-            {Content, _} = api_util:create_resp_content(Req1, Context1),
-            Tag = kz_term:to_hex_binary(crypto:hash('md5', Content)),
-            {list_to_binary([$", Tag, $"]), Req1, cb_context:set_resp_etag(Context1, Tag)};
-        'undefined' ->
-            {'undefined', Req1, cb_context:set_resp_etag(Context1, 'undefined')};
-        Tag ->
-            {list_to_binary([$", Tag, $"]), Req1, cb_context:set_resp_etag(Context1, Tag)}
-    end.
-
--spec expires(cowboy_req:req(), cb_context:context()) ->
-                     {calendar:datetime(), cowboy_req:req(), cb_context:context()}.
-expires(Req, Context) ->
-    Event = api_util:create_event_name(Context, <<"expires">>),
-    Context1 = crossbar_bindings:fold(Event, Context),
-    {cb_context:resp_expires(Context1), Req, Context1}.

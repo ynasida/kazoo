@@ -1194,15 +1194,16 @@ maybe_cleanup_file({File, _}) ->
     lager:debug("deleting ~s: ~p", [File, _Del]);
 maybe_cleanup_file(_) -> 'ok'.
 
-
 %%------------------------------------------------------------------------------
-%% @doc This function will create the content for the response body.
+%% @doc This function will create the JSON content for the response body.
 %% @end
 %%------------------------------------------------------------------------------
--spec create_resp_content(cowboy_req:req(), cb_context:context()) ->
-                                 {kz_term:ne_binary() | iolist(), cowboy_req:req()}.
-create_resp_content(Req0, Context) ->
-    Resp = create_resp_envelope(Context),
+-spec create_json_resp_content(cowboy_req:req(), cb_context:context()) ->
+                                      {kz_term:ne_binary() | iolist(), cowboy_req:req()}.
+create_json_resp_content(Req0, Context) ->
+    Resp = create_resp_envelope(
+             cb_context:import_errors(Context)
+            ),
     Options = get_encode_options(Context),
     try kz_json:encode(Resp, Options) of
         JSON ->
@@ -1226,6 +1227,47 @@ create_resp_content(Req0, Context) ->
             {<<"failure in request, contact support">>, Req0}
     end.
 
+-spec create_resp_envelope(cb_context:context()) -> kz_json:object().
+create_resp_envelope(Context) ->
+    Resp = case cb_context:response(Context) of
+               {'ok', RespData} ->
+                   [{<<"auth_token">>, cb_context:auth_token(Context)}
+                   ,{<<"status">>, <<"success">>}
+                   ,{<<"request_id">>, cb_context:req_id(Context)}
+                   ,{<<"node">>, kz_nodes:node_encoded()}
+                   ,{<<"version">>, kz_util:kazoo_version()}
+                   ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
+                   ,{<<"revision">>, kz_term:to_api_binary(cb_context:resp_etag(Context))}
+                   ,{<<"data">>, RespData}
+                   ];
+               {'error', {ErrorCode, ErrorMsg, RespData}} ->
+                   lager:debug("generating error ~b ~s response", [ErrorCode, ErrorMsg]),
+                   [{<<"auth_token">>, kz_term:to_binary(cb_context:auth_token(Context))}
+                   ,{<<"request_id">>, cb_context:req_id(Context)}
+                   ,{<<"node">>, kz_nodes:node_encoded()}
+                   ,{<<"version">>, kz_util:kazoo_version()}
+                   ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
+                   ,{<<"status">>, <<"error">>}
+                   ,{<<"message">>, ErrorMsg}
+                   ,{<<"error">>, kz_term:to_binary(ErrorCode)}
+                   ,{<<"data">>, RespData}
+                   ]
+           end,
+    encode_start_keys(kz_json:set_values(Resp, cb_context:resp_envelope(Context))
+                     ,cb_context:should_paginate(Context)
+                     ).
+
+-spec get_encode_options(cb_context:context()) -> kz_json:encode_options().
+get_encode_options(Context) ->
+    case cb_context:pretty_print(Context) of
+        'true' ->  ['pretty'];
+        'false' -> []
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc This function will create the binary content for the response body.
+%% @end
+%%------------------------------------------------------------------------------
 -spec create_binary_resp_content(cowboy_req:req(), cb_context:context()) ->
                                         {iodata(), cowboy_req:req()}.
 create_binary_resp_content(Req, Context) ->
@@ -1234,6 +1276,10 @@ create_binary_resp_content(Req, Context) ->
         _Else -> {<<>>, Req}
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc This function will create the xml content for the response body.
+%% @end
+%%------------------------------------------------------------------------------
 -spec create_xml_resp_content(cowboy_req:req(), cb_context:context()) ->
                                      {kz_term:ne_binary() | iolist(), cowboy_req:req()}.
 create_xml_resp_content(Req0, Context) ->
@@ -1251,13 +1297,6 @@ create_xml_resp_content(Req0, Context) ->
                                  },
             Xml = iolist_to_binary(xmerl:export([ErrorEl], 'xmerl_xml')),
             {Xml, Req1}
-    end.
-
--spec get_encode_options(cb_context:context()) -> kz_json:encode_options().
-get_encode_options(Context) ->
-    case cb_context:pretty_print(Context) of
-        'true' ->  ['pretty'];
-        'false' -> []
     end.
 
 %%------------------------------------------------------------------------------
@@ -1500,6 +1539,22 @@ csv_file_name(Context, Default) ->
         FileName -> FileName
     end.
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 -spec init_chunk_stream(cowboy_req:req(), cb_context:context(), kz_term:ne_binary()) -> cowboy_req:req().
 init_chunk_stream(Req, _, <<"to_json">>) ->
     Headers = cowboy_req:resp_headers(Req),
@@ -1604,40 +1659,6 @@ maybe_set_pull_response_stream(Other, Req, Context) ->
 %% @doc This function extracts the response fields and puts them in a proplist.
 %% @end
 %%------------------------------------------------------------------------------
--spec create_resp_envelope(cb_context:context()) -> kz_json:object().
-create_resp_envelope(Context) ->
-    do_create_resp_envelope(cb_context:import_errors(Context)).
-
--spec do_create_resp_envelope(cb_context:context()) -> kz_json:object().
-do_create_resp_envelope(Context) ->
-    Resp = case cb_context:response(Context) of
-               {'ok', RespData} ->
-                   [{<<"auth_token">>, cb_context:auth_token(Context)}
-                   ,{<<"status">>, <<"success">>}
-                   ,{<<"request_id">>, cb_context:req_id(Context)}
-                   ,{<<"node">>, kz_nodes:node_encoded()}
-                   ,{<<"version">>, kz_util:kazoo_version()}
-                   ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
-                   ,{<<"revision">>, kz_term:to_api_binary(cb_context:resp_etag(Context))}
-                   ,{<<"data">>, RespData}
-                   ];
-               {'error', {ErrorCode, ErrorMsg, RespData}} ->
-                   lager:debug("generating error ~b ~s response", [ErrorCode, ErrorMsg]),
-                   [{<<"auth_token">>, kz_term:to_binary(cb_context:auth_token(Context))}
-                   ,{<<"request_id">>, cb_context:req_id(Context)}
-                   ,{<<"node">>, kz_nodes:node_encoded()}
-                   ,{<<"version">>, kz_util:kazoo_version()}
-                   ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
-                   ,{<<"status">>, <<"error">>}
-                   ,{<<"message">>, ErrorMsg}
-                   ,{<<"error">>, kz_term:to_binary(ErrorCode)}
-                   ,{<<"data">>, RespData}
-                   ]
-           end,
-
-    encode_start_keys(kz_json:set_values(Resp, cb_context:resp_envelope(Context))
-                     ,cb_context:should_paginate(Context)
-                     ).
 
 -spec close_chunk_json_envelope(cowboy_req:req(), cb_context:context()) -> 'ok'.
 close_chunk_json_envelope(Req, Context) ->
