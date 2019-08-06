@@ -36830,6 +36830,11 @@
                     "maxLength": 32,
                     "minLength": 5,
                     "type": "string"
+                },
+                "transcribe": {
+                    "default": false,
+                    "description": "Transcribe voicemail using ASR engine",
+                    "type": "boolean"
                 }
             },
             "required": [
