@@ -28,6 +28,13 @@
 
 -include("kz_voicemail.hrl").
 
+-define(MPEG, <<"audio/mpeg">>).
+-define(WAV, <<"application/wav">>).
+-define(IS_WAV(ContentType),
+        ContentType == <<"application/wav">>
+            orelse ContentType == <<"audio/wav">>
+       ).
+
 %%------------------------------------------------------------------------------
 %% @doc Get formatted account's database name
 %% @end
@@ -377,7 +384,7 @@ maybe_transcribe(_, _, 'false') -> 'undefined'.
 -spec maybe_transcribe(kz_term:ne_binary(), kz_json:object(), binary(), kz_term:api_binary()) -> kz_term:api_object().
 maybe_transcribe(_, _, _, 'undefined') -> 'undefined';
 maybe_transcribe(_, _, <<>>, _) -> 'undefined';
-maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
+maybe_transcribe(Db, MediaDoc, Bin, ContentType) when ?IS_WAV(ContentType) ->
     case kazoo_asr:freeform(Bin, ContentType) of
         {'ok', Resp} ->
             lager:info("transcription resp: ~p", [Resp]),
@@ -392,6 +399,15 @@ maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
             'undefined';
         {'error', ErrorCode, Description} ->
             lager:info("error transcribing: ~p, ~p", [ErrorCode, Description]),
+            'undefined'
+    end;
+maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
+    case ContentType of
+        ?MPEG ->
+            WavFile = kazoo_asr_util:convert_content(Bin, ?MPEG, ?WAV),
+            maybe_transcribe(Db, MediaDoc, WavFile, ?WAV);
+        _ ->
+            lager:info("unsupported content type ~p for transcription.", [ContentType]),
             'undefined'
     end.
 
