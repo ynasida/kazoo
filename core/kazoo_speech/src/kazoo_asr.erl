@@ -11,26 +11,69 @@
 
 -export([freeform/1, freeform/2, freeform/3, freeform/4
         ,commands/2, commands/3, commands/4, commands/5
+        ,accepted_content_types/0
+        ,default_provider/0
         ]).
 
 -include("kazoo_speech.hrl").
 
+-define(DEFAULT_ASR_PROVIDER, <<"ispeech">>).
+-define(DEFAULT_ASR_CONTENT_TYPE, <<"application/wav">>).
+-define(DEFAULT_ASR_LOCALE, <<"en-us">>).
+
+%%%------------------------------------------------------------------------------
+%%% @doc
+%%% Return return configured or set the default ASR provider
+%%% @end
+%%%------------------------------------------------------------------------------
 -spec default_provider() -> kz_term:ne_binary().
 default_provider() ->
-    kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_provider">>, <<"ispeech">>).
+    kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_provider">>, ?DEFAULT_ASR_PROVIDER).
 
+%%%------------------------------------------------------------------------------
+%%% @doc
+%%% Return or set ASR providers preferred content type
+%%% @end
+%%%------------------------------------------------------------------------------
 -spec default_mime_type() -> kz_term:ne_binary().
 default_mime_type() ->
-    kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_mime_type">>, <<"application/wav">>).
+    try (kz_term:to_atom(<<"kazoo_asr_", (default_provider())/binary>>, 'true')):preferred_content_type() of
+        ContentType ->
+            kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_preferred_content_type">>, ContentType)
+    catch
+       'error':'undef' ->
+            kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_prefererd_content_type">>, ?DEFAULT_ASR_CONTENT_TYPE)
+    end.
 
+%%%------------------------------------------------------------------------------
+%%% @doc
+%%% Return configured local for ASR
+%%% @end
+%%%------------------------------------------------------------------------------
 -spec default_locale() -> kz_term:ne_binary().
 default_locale() ->
-    kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_locale">>, <<"en-us">>).
+    kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_locale">>, ?DEFAULT_ASR_LOCALE).
 
-%%------------------------------------------------------------------------------
-%% Transcribe the audio binary
-%%------------------------------------------------------------------------------
+%%%------------------------------------------------------------------------------
+%%% @doc
+%%% Return list of accepted content types for the default ASR provider
+%%% @end
+%%%------------------------------------------------------------------------------
+-spec accepted_content_types() -> kz_term:ne_binaries().
+accepted_content_types() ->
+    ASRProvider = default_provider(),
+    try (kz_term:to_atom(<<"kazoo_asr_", ASRProvider/binary>>, 'true')):accepted_content_types()
+        catch
+        'error':'undef' ->
+            lager:error("unknown ASR provider ~s", [ASRProvider]),
+            []
+    end.
 
+%%%------------------------------------------------------------------------------
+%%% @doc
+%%% Transcribe the audio binary
+%%% @end
+%%%------------------------------------------------------------------------------
 -spec freeform(binary()) -> asr_resp().
 freeform(Content) ->
     freeform(Content, default_mime_type()).
@@ -49,6 +92,7 @@ freeform(Content, ContentType, Locale, Options) ->
 
 -spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> asr_resp().
 freeform(Content, ContentType, Locale, Options, ASRProvider) ->
+    lager:notice("~p~n", [Options]),
     try (kz_term:to_atom(<<"kazoo_asr_", ASRProvider/binary>>, 'true')):freeform(Content, ContentType, Locale, Options)
     catch
         'error':'undef' ->
@@ -56,10 +100,11 @@ freeform(Content, ContentType, Locale, Options, ASRProvider) ->
             {'error', 'unknown_provider'}
     end.
 
-%%------------------------------------------------------------------------------
-%% Transcribe the audio binary
-%%------------------------------------------------------------------------------
-
+%%%------------------------------------------------------------------------------
+%%% @doc
+%%% Transcribe the audio binary
+%%% @end
+%%%------------------------------------------------------------------------------
 -spec commands(kz_term:ne_binary(), kz_term:ne_binaries()) -> asr_resp().
 commands(Bin, Commands) ->
     commands(Bin, Commands, default_mime_type()).
