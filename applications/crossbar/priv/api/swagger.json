@@ -298,6 +298,10 @@
                         {
                             "friendly_name": "Support",
                             "name": "support"
+                        },
+                        {
+                            "friendly_name": "ASR Transcriptions",
+                            "name": "asr-transcriptions"
                         }
                     ],
                     "description": "ledgers registered_ledgers",
@@ -32809,6 +32813,10 @@
                         {
                             "friendly_name": "Support",
                             "name": "support"
+                        },
+                        {
+                            "friendly_name": "ASR Transcriptions",
+                            "name": "asr-transcriptions"
                         }
                     ],
                     "description": "ledgers registered_ledgers",

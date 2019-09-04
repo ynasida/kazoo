@@ -219,6 +219,8 @@
           'name': mobile_data
         - 'friendly_name': Support
           'name': support
+        - 'friendly_name': ASR Transcriptions
+          'name': asr-transcriptions
       'description': ledgers registered_ledgers
       'items':
         'type': object
@@ -11458,6 +11460,8 @@
           'name': mobile_data
         - 'friendly_name': Support
           'name': support
+        - 'friendly_name': ASR Transcriptions
+          'name': asr-transcriptions
       'description': ledgers registered_ledgers
       'items':
         'type': object
