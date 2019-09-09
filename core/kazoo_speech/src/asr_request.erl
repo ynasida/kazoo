@@ -7,7 +7,7 @@
 -export([account_db/1, set_account_db/2
         ,account_id/1, set_account_id/2
         ,asr_provider/1, set_asr_provider/2
-%        ,authorize/1
+        ,amount/1, set_amount/2
         ,billing_seconds/1
         ,call_id/1
         ,content_type/1, set_content_type/2
@@ -64,6 +64,14 @@ account_db(#asr_req{account_db=AccountDb}) -> AccountDb.
 %%------------------------------------------------------------------------------
 -spec account_id(asr_req()) -> kz_term:ne_binary().
 account_id(#asr_req{account_id=AccountId}) -> AccountId.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% amount getter
+%% @end
+%%------------------------------------------------------------------------------
+-spec amount(asr_req()) -> kz_term:ne_binary().
+amount(#asr_req{amount=Amount}) -> Amount.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -327,6 +335,15 @@ set_account_db(Request, AccountDb) ->
 -spec set_account_id(asr_req(), kz_term:ne_binary()) -> asr_req().
 set_account_id(Request, AccountId) ->
     Request#asr_req{account_id=AccountId}.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% amount getter
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_amount(asr_req(), integer()) -> kz_term:ne_binary().
+set_amount(Request, Amount) ->
+    Request#asr_req{amount=Amount}.
 
 %%------------------------------------------------------------------------------
 %% @doc
