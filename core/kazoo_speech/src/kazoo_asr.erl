@@ -12,7 +12,7 @@
 -export([freeform/1, freeform/2, freeform/3, freeform/4
         ,commands/2, commands/3, commands/4, commands/5
         ,accepted_content_types/0
-        ,preferred_content_type/0
+        ,preferred_content_type/0, preferred_content_type/1
         ]).
 
 -include("kazoo_speech.hrl").
@@ -42,31 +42,10 @@ preferred_content_type() ->
 
 -spec preferred_content_type(kz_term:ne_binary()) -> kz_term:ne_binary().
 preferred_content_type(Provider) ->
-    CT = kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_preferred_content_type">>),
-    preferred_content_type(Provider, CT).
-
--spec preferred_content_type(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:atom()) -> kz_term:ne_binary().
-preferred_content_type(_Provider, _CT='undefined') ->
-    kapps_config:set_value(?MOD_CONFIG_CAT, <<"asr_preferred_content_type">>, default_mime_type());
-preferred_content_type(_Provider, CT) ->
-    case  CT =:= default_mime_type() of
-        'true' -> CT;
-        'false' ->
-            kapps_config:set_value(?MOD_CONFIG_CAT, <<"asr_preferred_content_type">>, default_mime_type())
-    end.
-
-%%%------------------------------------------------------------------------------
-%%% @doc
-%%% Return or set ASR providers preferred content type
-%%% @end
-%%%------------------------------------------------------------------------------
--spec default_mime_type() -> kz_term:ne_binary().
-default_mime_type() ->
-    ASRProvider = default_provider(),
-    try (kz_term:to_atom(<<"kazoo_asr_", ASRProvider/binary>>, 'true')):preferred_content_type()
+    try (kz_term:to_atom(<<"kazoo_asr_", Provider/binary>>, 'true')):preferred_content_type()
     catch
-       'error':'undef' ->
-            lager:error("unknown provider ~s", [ASRProvider]),
+        'error':'undef' ->
+            lager:error("unknown provider ~s", [Provider]),
             ?DEFAULT_ASR_CONTENT_TYPE
     end.
 
@@ -95,7 +74,7 @@ accepted_content_types() ->
 %%%------------------------------------------------------------------------------
 -spec freeform(binary()) -> asr_resp().
 freeform(Content) ->
-    freeform(Content, default_mime_type()).
+    freeform(Content, preferred_content_type()).
 
 -spec freeform(binary(), kz_term:ne_binary()) -> asr_resp().
 freeform(Content, ContentType) ->
@@ -126,7 +105,7 @@ freeform(Content, ContentType, Locale, Options, ASRProvider) ->
 %%%------------------------------------------------------------------------------
 -spec commands(kz_term:ne_binary(), kz_term:ne_binaries()) -> asr_resp().
 commands(Bin, Commands) ->
-    commands(Bin, Commands, default_mime_type()).
+    commands(Bin, Commands, preferred_content_type()).
 
 -spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary()) -> asr_resp().
 commands(Bin, Commands, ContentType) ->
