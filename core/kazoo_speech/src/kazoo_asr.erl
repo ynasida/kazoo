@@ -12,6 +12,7 @@
 -export([freeform/1, freeform/2, freeform/3, freeform/4
         ,commands/2, commands/3, commands/4, commands/5
         ,accepted_content_types/0
+        ,default_provider/0
         ,preferred_content_type/0, preferred_content_type/1
         ]).
 
