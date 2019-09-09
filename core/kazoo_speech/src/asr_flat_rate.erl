@@ -6,7 +6,7 @@
         ,debit/1
         ]).
 
--define(ASR_LEDGER, <<"ASR Transcriptions">>).
+-define(ASR_LEDGER, <<"asr-trancriptions">>).
 -define(ASR_PROVIDER, kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_provider">>, <<"ispeech">>)).
 
 %%------------------------------------------------------------------------------
