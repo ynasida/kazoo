@@ -360,7 +360,6 @@ maybe_transcribe(_, _,'false') -> 'undefined';
 maybe_transcribe(Call, MediaId, 'true') ->
     Req = asr_request:from_voicemail(Call, MediaId),
     Req0 = asr_request:transcribe(Req),
-    lager:notice("Request: ~p~n", [Req0]),
     case asr_request:has_error(Req0) of
         'true' -> handle_asr_error(asr_request:error(Req0));
         'false' -> asr_request:transcription(Req0)

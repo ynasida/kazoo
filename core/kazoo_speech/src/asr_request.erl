@@ -371,7 +371,6 @@ set_attachment(Request, AttachmentId) ->
 set_attachment_metadata(#asr_req{account_id=AccountId, media_id=MediaId}=Request) ->
     AccountMODB = kvm_util:get_db(AccountId, MediaId),
     {'ok', MediaDoc} = kz_datamgr:open_doc(AccountMODB, MediaId),
-    lager:notice("MediaDoc: ~n~n~p~n~n", [MediaDoc]),
     case kz_doc:attachment_names(MediaDoc) of
         [] ->
             lager:warning("no audio attachments on media doc ~s: ~p", [MediaId, MediaDoc]),
