@@ -12,7 +12,7 @@
 -export([freeform/1, freeform/2, freeform/3, freeform/4
         ,commands/2, commands/3, commands/4, commands/5
         ,accepted_content_types/0
-        ,default_provider/0
+        ,preferred_content_type/0
         ]).
 
 -include("kazoo_speech.hrl").
@@ -20,6 +20,7 @@
 -define(DEFAULT_ASR_PROVIDER, <<"ispeech">>).
 -define(DEFAULT_ASR_CONTENT_TYPE, <<"application/wav">>).
 -define(DEFAULT_ASR_LOCALE, <<"en-us">>).
+-define(ACCEPTED_CONTENT_TYPES, [<<"audio/mpeg">>, <<"audio/wav">>, <<"application/wav">>]).
 
 %%%------------------------------------------------------------------------------
 %%% @doc
@@ -32,17 +33,41 @@ default_provider() ->
 
 %%%------------------------------------------------------------------------------
 %%% @doc
+%%% Return preferred content_type for ASR Provider
+%%% @end
+%%%------------------------------------------------------------------------------
+-spec preferred_content_type() -> kz_term:ne_binary().
+preferred_content_type() ->
+    preferred_content_type(default_provider()).
+
+-spec preferred_content_type(kz_term:ne_binary()) -> kz_term:ne_binary().
+preferred_content_type(Provider) ->
+    CT = kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_preferred_content_type">>),
+    preferred_content_type(Provider, CT).
+
+-spec preferred_content_type(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:atom()) -> kz_term:ne_binary().
+preferred_content_type(_Provider, _CT='undefined') ->
+    kapps_config:set_value(?MOD_CONFIG_CAT, <<"asr_preferred_content_type">>, default_mime_type());
+preferred_content_type(_Provider, CT) ->
+    case  CT =:= default_mime_type() of
+        'true' -> CT;
+        'false' ->
+            kapps_config:set_value(?MOD_CONFIG_CAT, <<"asr_preferred_content_type">>, default_mime_type())
+    end.
+
+%%%------------------------------------------------------------------------------
+%%% @doc
 %%% Return or set ASR providers preferred content type
 %%% @end
 %%%------------------------------------------------------------------------------
 -spec default_mime_type() -> kz_term:ne_binary().
 default_mime_type() ->
-    try (kz_term:to_atom(<<"kazoo_asr_", (default_provider())/binary>>, 'true')):preferred_content_type() of
-        ContentType ->
-            kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_preferred_content_type">>, ContentType)
+    ASRProvider = default_provider(),
+    try (kz_term:to_atom(<<"kazoo_asr_", ASRProvider/binary>>, 'true')):preferred_content_type()
     catch
        'error':'undef' ->
-            kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_prefererd_content_type">>, ?DEFAULT_ASR_CONTENT_TYPE)
+            lager:error("unknown provider ~s", [ASRProvider]),
+            ?DEFAULT_ASR_CONTENT_TYPE
     end.
 
 %%%------------------------------------------------------------------------------
@@ -56,18 +81,12 @@ default_locale() ->
 
 %%%------------------------------------------------------------------------------
 %%% @doc
-%%% Return list of accepted content types for the default ASR provider
+%%% Return list of accepted content types for passthrough or conversion
 %%% @end
 %%%------------------------------------------------------------------------------
 -spec accepted_content_types() -> kz_term:ne_binaries().
 accepted_content_types() ->
-    ASRProvider = default_provider(),
-    try (kz_term:to_atom(<<"kazoo_asr_", ASRProvider/binary>>, 'true')):accepted_content_types()
-        catch
-        'error':'undef' ->
-            lager:error("unknown ASR provider ~s", [ASRProvider]),
-            []
-    end.
+    ?ACCEPTED_CONTENT_TYPES.
 
 %%%------------------------------------------------------------------------------
 %%% @doc
