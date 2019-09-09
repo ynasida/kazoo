@@ -27,9 +27,6 @@
 -define(GOOGLE_ASR_ENABLE_AUTOMATIC_PUNCTUATION, kapps_config:get_is_true(?GOOGLE_CONFIG_CAT, <<"asr_enable_automatic_punctuation">>, 'true')).
 -define(GOOGLE_ASR_MODEL, kapps_config:get_binary(?GOOGLE_CONFIG_CAT, <<"asr_model">>, <<"phone_call">>)).
 -define(GOOGLE_ASR_USE_ENHANCED, kapps_config:get_is_true(?GOOGLE_CONFIG_CAT, <<"asr_use_enhanced">>, 'true')).
-
--define(DEFAULT_ASR_CONTENT_TYPE, <<"application/wav">>).
--define(SUPPORTED_CONTENT_TYPES, [<<"application/wav">>]).
 -define(GOOGLE_ASR_PREFERRED_CONTENT_TYPE, <<"application/wav">>).
 -define(GOOGLE_ASR_ACCEPTED_CONTENT_TYPES, [<<"audio/wav">>, <<"application/wav">>]).
 
@@ -53,15 +50,6 @@ accepted_content_types() ->
 
 %%%-----------------------------------------------------------------------------
 %%% @doc
-%%% Check to see if audio is currently supported content type
-%%% @end
-%%%-----------------------------------------------------------------------------
--spec is_valid_content_type(kz_term:ne_binary()) -> kz_term:bool().
-is_valid_content_type(ContentType) ->
-    lists:member(ContentType,  accepted_content_types()).
-
-%%%-----------------------------------------------------------------------------
-%%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
 -spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> provider_return().
@@ -75,7 +63,7 @@ commands(_Bin, _Commands, _ContentType, _Locale, _Opts) ->
 %%%-----------------------------------------------------------------------------
 -spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> asr_resp().
 freeform(Content, ContentType, Locale, Options) ->
-    case kazoo_asr_util:maybe_convert_content(Content, ContentType, ?SUPPORTED_CONTENT_TYPES, ?DEFAULT_ASR_CONTENT_TYPE) of
+    case kazoo_asr_util:maybe_convert_content(Content, ContentType, accepted_content_types(), preferred_content_type()) of
         {'error', _}=E -> E;
         {Content1, ContentType1} -> exec_freeform(Content1, ContentType1, Locale, Options)
     end.
@@ -85,7 +73,6 @@ freeform(Content, ContentType, Locale, Options) ->
 exec_freeform(Content, _ContentType, Locale, Options) ->
     BaseUrl = ?GOOGLE_ASR_URL,
     Headers = req_headers(),
-    {Content2, _} = maybe_convert_content(Content, ContentType),
     lager:debug("sending request to ~s", [BaseUrl]),
 
     AudioConfig = [{<<"languageCode">>, Locale}
@@ -95,7 +82,7 @@ exec_freeform(Content, _ContentType, Locale, Options) ->
                   ,{<<"model">>, ?GOOGLE_ASR_MODEL}
                   ,{<<"useEnhanced">>, ?GOOGLE_ASR_USE_ENHANCED}
                   ],
-    AudioContent = [{<<"content">>, base64:encode(Content2)}],
+    AudioContent = [{<<"content">>, base64:encode(Content)}],
     Req = kz_json:from_list([{<<"config">>,kz_json:from_list(AudioConfig)}
                             ,{<<"audio">>,kz_json:from_list(AudioContent)}
                             ]),
@@ -150,22 +137,3 @@ handle_response({'ok', _Code, _Hdrs, Content2}) ->
     lager:debug("asr of media failed with code ~p", [_Code]),
     lager:debug("resp: ~s", [Content2]),
     {'error', 'asr_provider_failure', kz_json:decode(Content2)}.
-
-%%%------------------------------------------------------------------------------
-%%% @doc
-%%% Convert audio content to preferred ASR content type.
-%%% @end
-%%%------------------------------------------------------------------------------
--spec maybe_convert_content(kz_term:ne_binary(), kz_term:ne_binary()) -> conversion_return().
-maybe_convert_content(Content, ContentType) ->
-    case is_valid_content_type(ContentType) of
-        'true' -> {Content, ContentType};
-        'false' ->maybe_convert_content(Content, ContentType, ?GOOGLE_ASR_PREFERRED_CONTENT_TYPE)
-    end.
-
--spec maybe_convert_content(kz_term:ne_binary(), kz_term:ne_binary(),  kz_term:ne_binary()) -> conversion_return().
-maybe_convert_content(Content, ContentType, ConvertTo) ->
-    case kazoo_asr_util:convert_content(Content, ContentType, ConvertTo) of
-        'error' -> {'error', 'unsupported_content_type'};
-        Converted -> {Converted, ConvertTo}
-    end.
