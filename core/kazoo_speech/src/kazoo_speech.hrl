@@ -21,7 +21,13 @@
 -type conversion_return() :: {binary(), kz_term:ne_binary()} |
                              {'error', 'unsupported_content_type'}.
 
--type provider_error() :: 'invalid_voice' | 'unknown_provider' | 'unsupported_content_type' | 'invalid_format' | 'media_not_found' | 'insufficient_funds'.
+-type provider_error() :: 'invalid_voice' |
+                          'unknown_provider' |
+                          'unsupported_content_type' |
+                          'invalid_format' |
+                          'media_not_found' |
+                          'insufficient_funds'.
+
 -type provider_return() :: {'error', provider_error()} |
                            {'error', 'asr_provider_failure', kz_term:ne_binary()} |
                            kz_http:ret().
@@ -42,6 +48,7 @@
                  ,'account_db' :: kz_term:ne_binary()
                  ,'account_id' :: kz_term:ne_binary()
                  ,'account_modb' :: kz_term:ne_binary()
+                 ,'amount' :: integer()
                  ,'attachment_id' :: kz_term:ne_binary()
                  ,'asr_provider' :: kz_term:ne_binary()
                  ,'billing_seconds' = 0 :: non_neg_integer()
