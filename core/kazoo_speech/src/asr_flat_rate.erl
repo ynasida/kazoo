@@ -11,18 +11,24 @@
 
 %%------------------------------------------------------------------------------
 %% @doc
+%% Authorize the ASR request has sufficient funds
 %% @end
 %%------------------------------------------------------------------------------
 -spec authorize(asr_req()) -> asr_req().
 authorize(Request) ->
-    lager:notice("Authorizing ASR Request"),
-    Request#asr_req{account_authorized='true', reseller_authorized='true', impact_reseller='true'}.
+    maybe_credit_available(Request).
 
 %%%------------------------------------------------------------------------------
 %%% @doc
+%%% Issue debit against transcription ledger
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%------------------------------------------------------------------------------
--spec debit(asr_req()) -> no_return().
+-spec debit(asr_req()) -> asr_req().
 debit(#asr_req{account_authorized='true', impact_reseller='false'}=Request) ->
     maybe_debit(Request);
 debit(#asr_req{account_authorized='true', reseller_authorized='true', impact_reseller='true'}=Request) ->
@@ -32,12 +38,24 @@ debit(Request) ->
 
 %%%------------------------------------------------------------------------------
 %%% @doc
+%%% Verify the ASR request has sufficient funds
 %%% @end
 %%%------------------------------------------------------------------------------
-%-spec maybe_credit_available(asr_req()) -> asr_req().
-%maybe_credit_available(#asr_req{account_id=AccountId}=Request) ->
-%    kz_currency:available_dollars(AccountId, 0),
-%    Request.
+-spec maybe_credit_available(asr_req()) -> asr_req().
+maybe_credit_available(#asr_req{account_id=AccountId}=Request) ->
+    case kz_currency:available_units(AccountId, 0) of
+        {'ok', Units} -> maybe_consume_flat_rate(Request, Units);
+        {'error', _Msg} -> asr_request:add_error(Request, {'error', 'insufficient_funds'})
+    end.
+
+%%%------------------------------------------------------------------------------
+%%% @doc
+%%% @end
+%%%------------------------------------------------------------------------------
+maybe_consume_flat_rate(#asr_req{impact_reseller='false'}=Request, _Units) ->
+    Request#asr_req{account_authorized='true'};
+maybe_consume_flat_rate(#asr_req{account_id=_AccountId, reseller_id=_ResellerId, impact_reseller='true'}=Request, _Units) ->
+    Request#asr_req{account_authorized='true', reseller_authorized='true'}.
 
 %%%------------------------------------------------------------------------------
 %%% @doc
@@ -45,17 +63,14 @@ debit(Request) ->
 %%%-----------------------------------------------------------------------------
 -spec maybe_debit(asr_req()) -> asr_req().
 maybe_debit(#asr_req{account_authorized='true', impact_reseller='false'}=Request) ->
-    lager:info("Don't need to bill reseller creating ledger entry."),
+    lager:debug("impact reseller is false"),
     create_ledger_usage(Request);
-maybe_debit(#asr_req{account_authorized='true', reseller_authorized='true'}=Request) ->
-    Accounts = [asr_request:account_id(Request)
-               ,asr_request:reseller_id(Request)
-               ],
-    lager:notice("impact reseller true updating accounts ~p",[Accounts]),
-    lists:foldl(fun create_ledger_usage/2, Request, Accounts);
-maybe_debit(#asr_req{account_id=AccountId}=Request) ->
-    lager:info("not enough credit in account ~s skipping transcription", [AccountId]),
-    asr_request:add_error(Request, {'error', 'insufficient_funds'}).
+maybe_debit(#asr_req{account_id=AccountId, reseller_id=ResellerId, account_authorized='true', reseller_authorized='true'}=Request) ->
+    lager:debug("impact reseller is true updating accounts [~s, ~s]", [AccountId, ResellerId]),
+    lists:foldl(fun create_ledger_usage/2, Request, [AccountId, ResellerId]);
+maybe_debit(Request) -> Request.
+%    lager:info("not enough credit in account ~s skipping transcription", [AccountId]),
+%    asr_request:add_error(Request, {'error', 'insufficient_funds'}).
 
 %%%------------------------------------------------------------------------------
 %%% @doc
@@ -79,7 +94,7 @@ create_ledger_usage(AccountId, Request) ->
           ,{fun kz_ledger:set_usage_unit/2, <<"transcription">>}
           ,{fun kz_ledger:set_period_start/2, asr_request:timestamp(Request)}
           ,{fun kz_ledger:set_metadata/2, metadata(Request)}
-          %,{fun kz_ledger:set_unit_amount/2, Amount}
+          ,{fun kz_ledger:set_unit_amount/2, asr_request:amount(Request)}
           ]
          ),
     case kz_ledger:debit(kz_ledger:setters(Setters), AccountId) of
@@ -93,7 +108,8 @@ create_ledger_usage(AccountId, Request) ->
 %%%------------------------------------------------------------------------------
 -spec metadata(asr_req()) -> kz_json:object().
 metadata(Request) ->
-    kz_json:from_list([{'recording_secs', asr_request:recording_seconds(Request)}
+    kz_json:from_list([{'account_id', asr_request:account_id(Request)}
+                      ,{'recording_secs', asr_request:recording_seconds(Request)}
                       ,{'call_id', asr_request:call_id(Request)}
                       ,{'media_id', asr_request:media_id(Request)}
                       ]).
