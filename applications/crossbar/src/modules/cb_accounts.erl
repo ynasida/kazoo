@@ -747,11 +747,11 @@ leak_pvt_enabled(Context) ->
     case kzd_accounts:is_enabled(cb_context:doc(Context)) of
         'true' ->
             cb_context:set_resp_data(Context
-                                     ,kzd_accounts:set_enabled(RespJObj, 'true')
+                                    ,kzd_accounts:set_enabled(RespJObj, 'true')
                                     );
         'false' ->
             cb_context:set_resp_data(Context
-                                     ,kzd_accounts:set_enabled(RespJObj, 'false')
+                                    ,kzd_accounts:set_enabled(RespJObj, 'false')
                                     )
     end.
 
