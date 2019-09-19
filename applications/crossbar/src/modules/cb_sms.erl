@@ -173,7 +173,7 @@ on_successful_validation(Context) ->
                 {<<"user">>, UserId, UserId}
         end,
 
-    {ToNum, ToOptions} = build_number(kz_json:get_value(<<"to">>, ContextDoc)),
+    {ToNum, ToOptions} = build_number(kzd_sms:to(ContextDoc)),
     ToUser =
         case kapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, <<"api_e164_convert_to">>, 'false')
             andalso knm_converters:is_reconcilable(filter_number(ToNum), AccountId)
@@ -183,6 +183,7 @@ on_successful_validation(Context) ->
         end,
 
     {FromNum, FromOptions} = build_number(kz_json:get_value(<<"from">>, ContextDoc, get_default_caller_id(Context, OwnerId))),
+    {FromNum, FromOptions} = build_number(kzd_sms:from(ContextDoc, get_default_caller_id(Context, OwnerId))),
     FromUser =
         case kapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, <<"api_e164_convert_from">>, 'false')
             andalso knm_converters:is_reconcilable(filter_number(FromNum), AccountId)

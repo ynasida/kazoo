@@ -26,7 +26,7 @@ new() ->
 
 -spec comments(doc()) -> kz_term:api_objects().
 comments(Doc) ->
-    comments(Doc, 'undefined').
+    comments(Doc, []).
 
 -spec comments(doc(), Default) -> kz_json:objects() | Default.
 comments(Doc, Default) ->

@@ -1209,7 +1209,7 @@ update_mwi(Context, _BoxId, _Status) ->
                                   {'true', kzd_voicemail_box:doc()} |
                                   'false'.
 maybe_migrate_vm_box(Box) ->
-    case kz_json:get_value(<<"notify_email_address">>, Box) of
+    case kzd_vmboxes:notify_email_addresses(Box) of
         'undefined' -> 'false';
         Emails ->
             {'true', kzd_voicemail_box:set_notification_emails(Box, Emails)}

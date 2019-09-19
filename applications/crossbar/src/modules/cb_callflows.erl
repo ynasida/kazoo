@@ -167,7 +167,7 @@ load_callflow(CallflowId, Context) ->
     Context1 = crossbar_doc:load(CallflowId, Context, ?TYPE_CHECK_OPTION(kzd_callflows:type())),
     case cb_context:resp_status(Context1) of
         'success' ->
-            Meta = get_metadata(kz_json:get_value(<<"flow">>, cb_context:doc(Context1))
+            Meta = get_metadata(kzd_callflows:flow(cb_context:doc(Context1))
                                ,cb_context:account_db(Context1)
                                ),
             cb_context:set_resp_data(Context1
@@ -178,11 +178,11 @@ load_callflow(CallflowId, Context) ->
 
 -spec request_numbers(cb_context:context()) -> kz_term:ne_binaries() | kz_json:json_term().
 request_numbers(Context) ->
-    kz_json:get_ne_value(<<"numbers">>, cb_context:req_data(Context), []).
+    kzd_callflows:numbers(cb_context:req_data(Context)).
 
 -spec request_patterns(cb_context:context()) -> kz_term:ne_binaries() | kz_json:json_term().
 request_patterns(Context) ->
-    kz_json:get_ne_value(<<"patterns">>, cb_context:req_data(Context), []).
+    kzd_callflows:patterns(cb_context:req_data(Context)).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -325,7 +325,7 @@ validate_callflow_schema(CallflowId, Context) ->
                         C1 = validate_uniqueness(CallflowId, on_successful_validation(CallflowId, C)),
 
                         Doc = cb_context:doc(C1),
-                        Nums = kz_json:get_list_value(<<"numbers">>, Doc, []),
+                        Nums = kzd_callflows:numbers(Doc),
                         cb_modules_util:validate_number_ownership(Nums, C1)
                 end,
     cb_context:validate_request_data(<<"callflows">>, Context, OnSuccess).
@@ -357,8 +357,8 @@ maybe_reconcile_numbers(Context) ->
         'false' -> Context;
         'true' ->
             CurrentJObj = cb_context:fetch(Context, 'db_doc', kz_json:new()),
-            Set1 = sets:from_list(kz_json:get_value(<<"numbers">>, CurrentJObj, [])),
-            Set2 = sets:from_list(kz_json:get_value(<<"numbers">>, cb_context:doc(Context), [])),
+            Set1 = sets:from_list(kzd_callflows:numbers(CurrentJObj)),
+            Set2 = sets:from_list(kzd_callflows:numbers(cb_context:doc(Context))),
             NewNumbers = sets:to_list(sets:subtract(Set2, Set1)),
             Options = [{'assign_to', cb_context:account_id(Context)}
                       ,{'dry_run', not cb_context:accepting_charges(Context)}
@@ -373,8 +373,8 @@ maybe_reconcile_numbers(Context) ->
 %%------------------------------------------------------------------------------
 -spec track_assignment(atom(), cb_context:context()) -> 'ok' | 'error'.
 track_assignment('post', Context) ->
-    NewNums = kz_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
-    OldNums = kz_json:get_value(<<"numbers">>, cb_context:fetch(Context, 'db_doc'), []),
+    NewNums = kzd_callflows:numbers(cb_context:doc(Context)),
+    OldNums = kzd_callflows:numbers(cb_context:fetch(Context, 'db_doc')),
     AccountId = cb_context:account_id(Context),
 
     Unassigned = [{Num, 'undefined'}
