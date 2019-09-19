@@ -286,7 +286,7 @@ return_only_blacklist(Context) ->
     case cb_context:resp_status(Context) of
         'success' ->
             RespData = cb_context:resp_data(Context),
-	    Blacklist = kzd_apps_store:blacklist(RespData),
+            Blacklist = kzd_apps_store:blacklist(RespData),
             NewRespData =
                 kz_json:from_list([
                                    {<<"blacklist">>, Blacklist}

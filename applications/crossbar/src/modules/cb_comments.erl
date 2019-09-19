@@ -334,7 +334,7 @@ check_comment_number(Context, Id) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             Doc = cb_context:doc(Context1),
-	    Comments = kzd_comments:comments(Doc),
+            Comments = kzd_comments:comments(Doc),
             Number = id_to_number(Id),
             case erlang:length(Comments) of
                 Length when Length < Number ->
