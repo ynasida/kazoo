@@ -126,11 +126,14 @@ put(Context) ->
 %%------------------------------------------------------------------------------
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
 on_successful_validation(Context) ->
-    ApiKey = kz_json:get_value(<<"api_key">>, cb_context:doc(Context)),
-
-    case kz_json:is_empty(ApiKey) of
-        'true' -> cb_context:add_system_error('invalid_credentials', Context);
-        'false' -> validate_by_api_key(Context, ApiKey)
+    case kzd_api_auth:api_key(cb_context:doc(Context)) of
+        'undefined' ->
+            cb_context:add_system_error('invalid_credentials', Context);
+        ApiKey ->
+            case kz_json:is_empty(ApiKey) of
+                'true' -> cb_context:add_system_error('invalid_credentials', Context);
+                'false' -> validate_by_api_key(Context, ApiKey)
+            end
     end.
 
 -spec validate_by_api_key(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
