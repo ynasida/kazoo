@@ -107,6 +107,11 @@
                              ,{<<"conferences">>
                               ,[<<"conference">>]
                               }
+                             ,{<<"asr">>
+                              ,[<<"google">>
+                               ,<<"ispeech">>
+                               ]
+                              }
                              ]).
 
 -define(KAZOO_SERVICES_HRL, 'true').
