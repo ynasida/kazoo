@@ -48,7 +48,7 @@
                  ,'account_db' :: kz_term:ne_binary()
                  ,'account_id' :: kz_term:ne_binary()
                  ,'account_modb' :: kz_term:ne_binary()
-                 ,'amount' :: integer()
+                 ,'amount' = 0 :: non_neg_integer()
                  ,'attachment_id' :: kz_term:ne_binary()
                  ,'asr_provider' :: kz_term:ne_binary()
                  ,'billing_seconds' = 0 :: non_neg_integer()
@@ -58,16 +58,16 @@
                  ,'error' = 'undefined' :: 'undefined' | {'error', provider_error()} | {'error',  'asr_provider_failure', kz_json:object()}
                  ,'impact_reseller' = 'true' :: boolean()
                  ,'media_id' :: kz_term:ne_binary()
-                 ,'recording_seconds' :: non_neg_integer()
+                 ,'recording_seconds'= 0 :: non_neg_integer()
                  ,'reseller_id' :: kz_term:ne_binary()
                  ,'reseller_authorized' = 'false' :: boolean()
                  ,'transcription' = 'undefined' :: asr_resp()
-                 ,'timestamp' :: integer()
+                 ,'timestamp' = 0 :: non_neg_integer()
                  ,'validated' = 'false' :: boolean()
                  }).
 
-    -opaque asr_req() :: #asr_req{}.
-    -export_type([asr_req/0]).
+-type asr_req() :: #asr_req{}.
+-export_type([asr_req/0]).
 
 -define(KAZOO_SPEECH_HRL, 'true').
 -endif.
