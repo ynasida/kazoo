@@ -91,7 +91,6 @@ freeform(Content, ContentType, Locale, Options) ->
 
 -spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> asr_resp().
 freeform(Content, ContentType, Locale, Options, ASRProvider) ->
-    lager:notice("~p~n", [Options]),
     try (kz_term:to_atom(<<"kazoo_asr_", ASRProvider/binary>>, 'true')):freeform(Content, ContentType, Locale, Options)
     catch
         'error':'undef' ->
