@@ -41,6 +41,9 @@
         ,ratedeck_name/2
         ,set_ratedeck_name/2
         ]).
+-export([asr/1
+        ,asr/2
+        ]).
 -export([applications/1
         ,applications/2
         ,set_applications/2
@@ -90,6 +93,7 @@
 -define(RATEDECK_ID, [?RATEDECK, <<"id">>]).
 -define(RATEDECK_NAME, [?RATEDECK, <<"name">>]).
 -define(APPLICATIONS, <<"applications">>).
+-define(ASR, <<"asr">>).
 -define(CATEGORY, <<"category">>).
 -define(MERGE, <<"merge">>).
 -define(MERGE_STRATEGY, [?MERGE, <<"strategy">>]).
@@ -282,6 +286,19 @@ applications(JObj, Default) ->
 -spec set_applications(doc(), kz_json:object()) -> doc().
 set_applications(JObj, Applications) ->
     kz_json:set_value(?APPLICATIONS, Applications, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec asr(doc()) -> kz_json:object().
+asr(JObj) ->
+    asr(JObj, kz_json:new()).
+
+-spec asr(doc(), Default) -> Default | kz_json:object().
+asr(JObj, Default) ->
+    category(JObj, ?ASR, Default).
+
 
 %%------------------------------------------------------------------------------
 %% @doc
