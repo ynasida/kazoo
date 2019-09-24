@@ -11,8 +11,9 @@
 
 -export([account_db/1, set_account_db/2
         ,account_id/1, set_account_id/2
-        ,asr_provider/1, set_asr_provider/2
         ,amount/1, set_amount/2
+        ,asr_provider/1, set_asr_provider/2
+        ,attachment/1, set_attachment/2
         ,billing_seconds/1
         ,call_id/1
         ,content_type/1, set_content_type/2
@@ -21,14 +22,12 @@
         ,add_error/2
         ,from_call/1
         ,from_voicemail/2
-        ,has_error/1
         ,impact_reseller/1, set_impact_reseller/2
         ,is_valid/1
         ,media_id/1, set_media_id/2
         ,new/0
         ,recording_seconds/1, set_recording_seconds/2
         ,reseller_id/1, reseller_id/2, set_reseller_id/2
-        ,attachment/1, set_attachment/2
         ,setters/2
         ,timestamp/1, set_timestamp/2
         ,modb/1, set_modb/2
@@ -75,7 +74,7 @@ account_id(#asr_req{account_id=AccountId}) -> AccountId.
 %% amount getter
 %% @end
 %%------------------------------------------------------------------------------
--spec amount(asr_req()) -> kz_term:ne_binary().
+-spec amount(asr_req()) -> non_neg_integer().
 amount(#asr_req{amount=Amount}) -> Amount.
 
 %%------------------------------------------------------------------------------
@@ -123,7 +122,7 @@ call_id(#asr_req{call_id=CallId}) -> CallId.
 %% content_type getter
 %% @end
 %%------------------------------------------------------------------------------
--spec content_type(asr_request) -> kz_term:ne_binary().
+-spec content_type(asr_req()) -> kz_term:ne_binary().
 content_type(#asr_req{content_type=ContentType})-> ContentType.
 
 %%------------------------------------------------------------------------------
@@ -147,9 +146,10 @@ error(#asr_req{error=Error}) -> Error.
 %% error setter
 %% @end
 %%------------------------------------------------------------------------------
--spec add_error(asr_req(), provider_error()) -> asr_req().
+-spec add_error(asr_req(), provider_return()) -> asr_req().
 add_error(Request, {'error', _}=Error) -> Request#asr_req{error=Error};
-add_error(Request, {'error', _, _}=Error) -> Request#asr_req{error=Error}.
+add_error(Request, {'error', 'asr_provider_failure', _}=Error) -> Request#asr_req{error=Error};
+add_error(Request, _) -> Request.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -174,7 +174,7 @@ fetch_attachment(#asr_req{account_modb=AccountMODB, attachment_id=AttachmentId, 
 from_call(Call) ->
     from_call(new(), Call).
 
--spec from_call(kapps_call:call(), asr_req()) -> asr_req().
+-spec from_call(asr_req(), kapps_call:call()) -> asr_req().
 from_call(Request, Call) ->
     AccountId = kapps_call:account_id(Call),
     ASRProvider = kazoo_asr:default_provider(),
@@ -197,15 +197,6 @@ from_voicemail(Call, MediaId) ->
               ,fun set_attachment_metadata/1
               ],
     setters(new(), Setters).
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec has_error(asr_req()) -> boolean().
-has_error(#asr_req{error='undefined'}) -> 'false';
-has_error(#asr_req{error={'error', _}}) -> 'true';
-has_error(#asr_req{error={'error', _, _}}) -> 'true';
-has_error(#asr_req{error=_}) -> 'true'.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -258,11 +249,11 @@ maybe_transcribe(#asr_req{account_modb=AccountDb, content_type=ContentType, medi
             lager:info("transcription resp: ~p", [Resp]),
             MediaDoc1 = kz_json:set_value(<<"transcription">>, Resp, MediaDoc),
             _ = kz_datamgr:ensure_saved(AccountDb, MediaDoc1),
-            is_valid_transcription(kz_json:get_value(<<"result">>, Resp)
+            Resp0 = is_valid_transcription(kz_json:get_value(<<"result">>, Resp)
                                   ,kz_json:get_value(<<"text">>, Resp)
                                   ,Resp
                                   ),
-            set_transcription(Request, Resp);
+            set_transcription(Request, Resp0);
         {'error', ErrorCode} ->
             lager:info("error transcribing: ~p", [ErrorCode]),
             'undefined';
@@ -276,7 +267,7 @@ maybe_transcribe(#asr_req{account_modb=AccountDb, content_type=ContentType, medi
 %% media_id getter
 %% @end
 %%------------------------------------------------------------------------------
--spec media_id(asr_req()) -> asr_req().
+-spec media_id(asr_req()) -> kz_term:ne_binary().
 media_id(#asr_req{media_id=MediaId}) -> MediaId.
 
 %------------------------------------------------------------------------------
@@ -284,7 +275,7 @@ media_id(#asr_req{media_id=MediaId}) -> MediaId.
 %% modb getter
 %% @end
 %%------------------------------------------------------------------------------
--spec modb(asr_req()) -> asr_req().
+-spec modb(asr_req()) -> kz_term:ne_binary().
 modb(#asr_req{account_modb=AccountMODB}) -> AccountMODB.
 
 %%------------------------------------------------------------------------------
@@ -300,7 +291,7 @@ new() -> #asr_req{}.
 %% recording duration getter
 %% @end
 %%------------------------------------------------------------------------------
--spec recording_seconds(asr_req()) -> kz_term:ne_binary().
+-spec recording_seconds(asr_req()) -> non_neg_integer().
 recording_seconds(#asr_req{recording_seconds=Duration}) -> Duration.
 
 %%------------------------------------------------------------------------------
@@ -319,7 +310,7 @@ reseller_id(#asr_req{reseller_id=ResellerId}) -> ResellerId.
 -spec reseller_id(kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
 reseller_id(AccountId, CCVs) ->
     case kz_json:get_value(<<"Reseller-ID">>, CCVs) of
-        'undefined' -> kzd_accounts:reseller_id(AccountId);
+        'undefined' -> kz_services_reseller:find_id(AccountId);
         ResellerId -> ResellerId
     end.
 
@@ -346,7 +337,7 @@ set_account_id(Request, AccountId) ->
 %% amount getter
 %% @end
 %%------------------------------------------------------------------------------
--spec set_amount(asr_req(), integer()) -> kz_term:ne_binary().
+-spec set_amount(asr_req(), non_neg_integer()) -> asr_req().
 set_amount(Request, Amount) ->
     Request#asr_req{amount=Amount}.
 
@@ -453,9 +444,8 @@ set_reseller_id(Request, ResellerId) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_timestamp(asr_req(), integer()) -> asr_req().
+-spec set_timestamp(asr_req(), non_neg_integer()) -> asr_req().
 set_timestamp(Request, Timestamp) ->
-    lager:notice("TIMESTAMP: ~p~n",[Timestamp]),
     Request#asr_req{timestamp=Timestamp}.
 
 %%------------------------------------------------------------------------------
@@ -463,7 +453,7 @@ set_timestamp(Request, Timestamp) ->
 %% transcription response setter
 %% @end
 %%------------------------------------------------------------------------------
--spec set_transcription(asr_req(), asr_resp()) -> asr_req().
+-spec set_transcription(asr_req(), 'undefined' | asr_resp()) -> asr_req().
 set_transcription(Request, Transcription) ->
     Request#asr_req{transcription=Transcription}.
 
@@ -491,7 +481,7 @@ setters_fold(F, R) when is_function(F, 1) -> F(R).
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec timestamp(asr_req()) -> integer().
+-spec timestamp(asr_req()) -> non_neg_integer().
 timestamp(#asr_req{timestamp=Timestamp}) -> Timestamp.
 
 %%------------------------------------------------------------------------------
@@ -533,7 +523,7 @@ is_valid(#asr_req{validated=Valid}) -> Valid.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec is_valid_transcription(kz_term:api_binary(), binary(), kz_json:object()) -> kz_term:api_object().
+-spec is_valid_transcription(kz_term:api_binary(), binary(), kz_json:object()) -> 'undefined' | kz_term:api_object().
 is_valid_transcription(<<"success">>, ?NE_BINARY, Resp) -> Resp;
 is_valid_transcription(<<"success">>, <<"">>, Resp) ->
     lager:info("successful but empty transcription"),

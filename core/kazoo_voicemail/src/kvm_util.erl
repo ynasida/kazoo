@@ -355,25 +355,14 @@ publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp) ->
 %% generate and asr request to transcribe voicemail recording
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_transcribe(kapps_call:call(), kz_term:ne_binary(), boolean()) -> kz_term:api_object().
+-spec maybe_transcribe(kapps_call:call(), kz_term:ne_binary(), boolean()) -> 'undefined' | kazoo_speech:asr_resp().
 maybe_transcribe(_, _,'false') -> 'undefined';
 maybe_transcribe(Call, MediaId, 'true') ->
     Req = asr_request:from_voicemail(Call, MediaId),
     Req0 = asr_request:transcribe(Req),
-    case asr_request:has_error(Req0) of
-        'true' -> handle_asr_error(asr_request:error(Req0));
-        'false' -> asr_request:transcription(Req0)
+    case asr_request:error(Req0) of
+        'undefined' -> asr_request:transcription(Req0);
+        Error ->
+            lager:notice("error transcribing ~p", [Error]),
+            'undefined'
     end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% handle transcription error
-%% @end
-%%------------------------------------------------------------------------------
--spec handle_asr_error({'error', kz_term:atom()} | {'error', kz_term:atom(), kz_term:ne_binary()}) -> 'undefined'.
-handle_asr_error({'error', ErrorCode}) ->
-    lager:info("error transcribing: ~p", [ErrorCode]),
-    'undefined';
-handle_asr_error({'error', ErrorCode, Description}) ->
-    lager:info("error transcribing: ~p, ~p", [ErrorCode, Description]),
-    'undefined'.
