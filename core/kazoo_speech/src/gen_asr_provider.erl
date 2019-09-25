@@ -10,26 +10,26 @@
 
 -include("kazoo_speech.hrl").
 
-%%%-----------------------------------------------------------------------------
-%%% @doc Returns the preferred content type for the ASR provider.
-%%% @end
-%%%-----------------------------------------------------------------------------
+%%-----------------------------------------------------------------------------
+%% @doc Returns the preferred content type for the ASR provider.
+%% @end
+%%-----------------------------------------------------------------------------
 -callback preferred_content_type() -> kz_term:ne_binary().
 
-%%%-----------------------------------------------------------------------------
-%%% @doc Returns a list of supported content types for the ASR provider.
-%%% @end
-%%%-----------------------------------------------------------------------------
+%%-----------------------------------------------------------------------------
+%% @doc Returns a list of supported content types for the ASR provider.
+%% @end
+%%-----------------------------------------------------------------------------
 -callback accepted_content_types() -> kz_term:ne_binaries().
 
-%%%-----------------------------------------------------------------------------
-%%% @doc Execute a transcription request to the ASR provider API.
-%%% @end
-%%%-----------------------------------------------------------------------------
+%%-----------------------------------------------------------------------------
+%% @doc Execute a transcription request to the ASR provider API.
+%% @end
+%%-----------------------------------------------------------------------------
 -callback freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> asr_resp().
 
-%%%-----------------------------------------------------------------------------
-%%% @doc Execute a command list request to the ASR provider API.
-%%% @end
-%%%-----------------------------------------------------------------------------
+%%-----------------------------------------------------------------------------
+%% @doc Execute a command list request to the ASR provider API.
+%% @end
+%%-----------------------------------------------------------------------------
 -callback commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> provider_return().
