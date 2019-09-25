@@ -30,7 +30,6 @@ authorize(#asr_req{account_id=AccountId, asr_provider=Provider, impact_reseller=
 
     case maybe_consume_flat_rate(Services, Amount) of
         {'true', _} ->
-            %_ = update_services(Services, CurrentJObj, asr_request:service_obj(Request)),
             Request#asr_req{account_authorized='true', amount=Amount};
         {'false', _} -> asr_request:add_error(Request, {'error', 'insufficient_funds'})
     end;
@@ -113,9 +112,7 @@ create_ledger_usage(Request, AccountId) ->
           ]
          ),
     case kz_ledger:debit(kz_ledger:setters(Setters), AccountId) of
-        {'ok', _} ->
-            %update_service_quantities(AccountId),
-            Request;
+        {'ok', _} -> Request;
         {'error', Msg} -> asr_request:add_error(Request, {'error', 'asr_provider_failure', kz_term:to_binary(Msg)})
     end.
 

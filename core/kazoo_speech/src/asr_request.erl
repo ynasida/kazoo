@@ -236,9 +236,9 @@ maybe_transcribe(#asr_req{account_modb=AccountDb, content_type=ContentType, medi
             MediaDoc1 = kz_json:set_value(<<"transcription">>, Resp, MediaDoc),
             _ = kz_datamgr:ensure_saved(AccountDb, MediaDoc1),
             Resp0 = is_valid_transcription(kz_json:get_value(<<"result">>, Resp)
-                                  ,kz_json:get_value(<<"text">>, Resp)
-                                  ,Resp
-                                  ),
+                                          ,kz_json:get_value(<<"text">>, Resp)
+                                          ,Resp
+                                          ),
             set_transcription(Request, Resp0);
         {'error', ErrorCode} ->
             lager:info("error transcribing: ~p", [ErrorCode]),
@@ -351,7 +351,7 @@ set_attachment_metadata(#asr_req{account_id=AccountId, media_id=MediaId}=Request
                       ,{fun set_timestamp/2, kzd_box_message:utc_seconds(MediaDoc)}
                       ,{fun set_impact_reseller/2, maybe_impact_reseller(Request)}
                       ],
-           setters(Request, Setters)
+            setters(Request, Setters)
     end.
 
 %%------------------------------------------------------------------------------

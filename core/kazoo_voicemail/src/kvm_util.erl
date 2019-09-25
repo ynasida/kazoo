@@ -299,7 +299,6 @@ get_caller_id_number(Call) ->
                                   kz_amqp_worker:request_return().
 publish_saved_notify(MediaId, BoxId, Call, Length, Props) ->
     MaybeTranscribe = props:get_value(<<"Transcribe-Voicemail">>, Props, 'false'),
-    %Transcription = maybe_transcribe(kapps_call:account_id(Call), MediaId, MaybeTranscribe),
     Transcription = maybe_transcribe(Call, MediaId, MaybeTranscribe),
 
     NotifyProp = [{<<"From-User">>, kapps_call:from_user(Call)}

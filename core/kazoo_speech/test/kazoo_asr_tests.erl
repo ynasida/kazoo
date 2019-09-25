@@ -23,9 +23,9 @@
 %%------------------------------------------------------------------------------
 asr_default_test_() ->
     [{"kazoo_asr system default provider abstraction."
-        ,default_asr_provider_test()}
+     ,default_asr_provider_test()}
     ,{"kazoo_asr system default accepted content types test."
-        ,default_asr_accept_test()}
+     ,default_asr_accept_test()}
     ].
 
 %%------------------------------------------------------------------------------
@@ -36,7 +36,7 @@ asr_google_test_() ->
     ,fun mock_me/0
     ,fun cleanup/1
     ,fun(_) -> [{"kazoo_asr google provider abstraction."
-                    ,google_asr_provider_test()}
+                ,google_asr_provider_test()}
                ]
      end
     }.
@@ -49,7 +49,7 @@ asr_ispeech_test_() ->
     ,fun mock_me/0
     ,fun cleanup/1
     ,fun(_) -> [{"kazoo_asr ispeech provider abstraction."
-                    ,ispeech_asr_provider_test()}
+                ,ispeech_asr_provider_test()}
                ]
      end
     }.
@@ -79,22 +79,22 @@ config_asr_ispeech(_, <<"asr_provider">>, _) -> <<"ispeech">>.
 %%------------------------------------------------------------------------------
 default_asr_provider_test() ->
     [{"Checking system default ASR provider"
-    ,?_assertEqual(kazoo_asr:default_provider(), ?ASR_PROVIDER_DEFAULT)}
+     ,?_assertEqual(kazoo_asr:default_provider(), ?ASR_PROVIDER_DEFAULT)}
     ].
 
 default_asr_accept_test() ->
     [{"Checking system default accepted content type"
-    ,?_assertEqual(kazoo_asr:accepted_content_types(), ?ASR_ACCEPT_DEFAULT)}
+     ,?_assertEqual(kazoo_asr:accepted_content_types(), ?ASR_ACCEPT_DEFAULT)}
     ].
 
 google_asr_provider_test() ->
     meck:expect('kapps_config', 'get_ne_binary', fun config_asr_google/3),
     [{"Checking google is default ASR"
-    ,?_assertEqual(kazoo_asr:default_provider(), <<"google">>)}
+     ,?_assertEqual(kazoo_asr:default_provider(), <<"google">>)}
     ].
 
 ispeech_asr_provider_test() ->
     meck:expect('kapps_config', 'get_ne_binary', fun config_asr_ispeech/3),
     [{"Checking ispeech is default ASR"
-    ,?_assertEqual(kazoo_asr:default_provider(), <<"ispeech">>)}
+     ,?_assertEqual(kazoo_asr:default_provider(), <<"ispeech">>)}
     ].

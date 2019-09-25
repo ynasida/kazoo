@@ -28,10 +28,10 @@ fetch(?NE_BINARY=AccountId) ->
     FetchOptions = ['hydrate_plans'],
     fetch(kz_services:fetch(AccountId, FetchOptions));
 fetch(Services) ->
-   ASRDict = kz_services_plans:foldl(fun fetch_foldl/3
-                                      ,dict:new()
-                                      ,kz_services:plans(Services)
-                                      ),
+    ASRDict = kz_services_plans:foldl(fun fetch_foldl/3
+                                     ,dict:new()
+                                     ,kz_services:plans(Services)
+                                     ),
     kz_json:from_list(dict:to_list(ASRDict)).
 
 %%------------------------------------------------------------------------------
