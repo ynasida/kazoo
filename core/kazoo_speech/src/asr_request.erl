@@ -255,7 +255,7 @@ maybe_transcribe(#asr_req{account_modb=AccountDb, content_type=ContentType, medi
 -spec media_id(asr_req()) -> kz_term:ne_binary().
 media_id(#asr_req{media_id=MediaId}) -> MediaId.
 
-%------------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
 %% @doc modb getter
 %% @end
 %%------------------------------------------------------------------------------
