@@ -75,7 +75,7 @@ quantities(AccountId) ->
     case kz_datamgr:get_results(MODB, ?ASR_VIEW, ViewOptions) of
         {'ok', Sources} -> generate_summary(Sources);
         {'error', _} ->
-            lager:error("Error retrieving asr quantities"),
+            lager:error("error retrieving asr quantities"),
             kz_json:new()
     end.
 
