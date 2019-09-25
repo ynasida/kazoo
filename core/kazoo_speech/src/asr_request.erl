@@ -62,24 +62,21 @@
 account_db(#asr_req{account_db=AccountDb}) -> AccountDb.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% account_id getter
+%% @doc account_id getter
 %% @end
 %%------------------------------------------------------------------------------
 -spec account_id(asr_req()) -> kz_term:ne_binary().
 account_id(#asr_req{account_id=AccountId}) -> AccountId.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% amount getter
+%% @doc amount getter
 %% @end
 %%------------------------------------------------------------------------------
 -spec amount(asr_req()) -> non_neg_integer().
 amount(#asr_req{amount=Amount}) -> Amount.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% asr_provider getter
+%% @doc asr_provider getter
 %% @end
 %%------------------------------------------------------------------------------
 -spec asr_provider(asr_req()) -> kz_term:ne_binary().
@@ -102,48 +99,42 @@ attachment(#asr_req{attachment_id=AttachmentId}) -> AttachmentId.
 authorize(Request) -> asr_flat_rate:authorize(Request).
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% billing_seconds getter
+%% @doc billing_seconds getter
 %% @end
 %%------------------------------------------------------------------------------
 -spec billing_seconds(asr_req()) -> non_neg_integer().
 billing_seconds(#asr_req{billing_seconds=BillingSecs}) -> BillingSecs.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% call_id getter
+%% @doc call_id getter
 %% @end
 %%------------------------------------------------------------------------------
 -spec call_id(asr_req()) -> kz_term:ne_binary().
 call_id(#asr_req{call_id=CallId}) -> CallId.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% content_type getter
+%% @doc content_type getter
 %% @end
 %%------------------------------------------------------------------------------
 -spec content_type(asr_req()) -> kz_term:ne_binary().
 content_type(#asr_req{content_type=ContentType})-> ContentType.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% transcription description getter
+%% @doc transcription description getter
 %% @end
 %%------------------------------------------------------------------------------
 -spec description(asr_req()) -> kz_term:ne_binary().
 description(#asr_req{description=Description}) -> Description.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% error getter
+%% @doc error getter
 %% @end
 %%------------------------------------------------------------------------------
 -spec error(asr_req()) -> 'undefined' | {'error', provider_error()} | {'error', 'asr_provider_failure', kz_term:ne_binary()}.
 error(#asr_req{error=Error}) -> Error.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% error setter
+%% @doc error setter
 %% @end
 %%------------------------------------------------------------------------------
 -spec add_error(asr_req(), provider_return()) -> asr_req().
@@ -166,8 +157,7 @@ fetch_attachment(#asr_req{account_modb=AccountMODB, attachment_id=AttachmentId, 
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% create asr_request record from a kapps_call record
+%% @doc create asr_request record from a kapps_call record
 %% @end
 %%------------------------------------------------------------------------------
 -spec from_call(kapps_call:call()) -> asr_req().
@@ -199,8 +189,7 @@ from_voicemail(Call, MediaId) ->
     setters(new(), Setters).
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% should we bill the reseller
+%% @doc should we bill the reseller
 %% @end
 %%------------------------------------------------------------------------------
 -spec impact_reseller(asr_req()) -> boolean().
@@ -208,8 +197,7 @@ impact_reseller(#asr_req{impact_reseller=ImpactReseller}) -> ImpactReseller.
 
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% determine if we should also propagate billing to the reseller
+%% @doc determine if we should also propagate billing to the reseller
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_impact_reseller(asr_req()) -> boolean().
@@ -223,8 +211,7 @@ maybe_impact_reseller(_ResellerId=_, _AccountId=_) -> 'false'.
 
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% try to transcribe media
+%% @doc try to transcribe media
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_transcribe(asr_req()) -> asr_req().
@@ -238,8 +225,7 @@ maybe_transcribe(#asr_req{}=Request) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% try to transcribe media
+%% @doc try to transcribe media
 %% @end
 %%------------------------------------------------------------------------------
 maybe_transcribe(#asr_req{account_modb=AccountDb, content_type=ContentType, media_id=MediaId}=Request, Bin) ->
@@ -263,48 +249,42 @@ maybe_transcribe(#asr_req{account_modb=AccountDb, content_type=ContentType, medi
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% media_id getter
+%% @doc media_id getter
 %% @end
 %%------------------------------------------------------------------------------
 -spec media_id(asr_req()) -> kz_term:ne_binary().
 media_id(#asr_req{media_id=MediaId}) -> MediaId.
 
 %------------------------------------------------------------------------------
-%% @doc
-%% modb getter
+%% @doc modb getter
 %% @end
 %%------------------------------------------------------------------------------
 -spec modb(asr_req()) -> kz_term:ne_binary().
 modb(#asr_req{account_modb=AccountMODB}) -> AccountMODB.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% create empty asr_req record
+%% @doc create empty asr_req record
 %% @end
 %%------------------------------------------------------------------------------
 -spec new() -> asr_req().
 new() -> #asr_req{}.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% recording duration getter
+%% @doc recording duration getter
 %% @end
 %%------------------------------------------------------------------------------
 -spec recording_seconds(asr_req()) -> non_neg_integer().
 recording_seconds(#asr_req{recording_seconds=Duration}) -> Duration.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% reseller_id getter
+%% @doc reseller_id getter
 %% @end
 %%------------------------------------------------------------------------------
 -spec reseller_id(asr_req()) -> kz_term:ne_binary().
 reseller_id(#asr_req{reseller_id=ResellerId}) -> ResellerId.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% reseller_id getter from CCVs
+%% @doc reseller_id getter from CCVs
 %% @end
 %%------------------------------------------------------------------------------
 -spec reseller_id(kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
@@ -315,8 +295,7 @@ reseller_id(AccountId, CCVs) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% account_db setter
+%% @doc account_db setter
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_account_db(asr_req(), kz_term:ne_binary()) -> asr_req().
@@ -324,8 +303,7 @@ set_account_db(Request, AccountDb) ->
     Request#asr_req{account_db=AccountDb}.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% account_id setter
+%% @doc account_id setter
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_account_id(asr_req(), kz_term:ne_binary()) -> asr_req().
@@ -333,8 +311,7 @@ set_account_id(Request, AccountId) ->
     Request#asr_req{account_id=AccountId}.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% amount getter
+%% @doc amount getter
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_amount(asr_req(), non_neg_integer()) -> asr_req().
@@ -342,8 +319,7 @@ set_amount(Request, Amount) ->
     Request#asr_req{amount=Amount}.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% asr_provider setter
+%% @doc asr_provider setter
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_asr_provider(asr_req(), kz_term:ne_binary()) -> asr_req().
@@ -379,8 +355,7 @@ set_attachment_metadata(#asr_req{account_id=AccountId, media_id=MediaId}=Request
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% media content_type setter
+%% @doc media content_type setter
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_content_type(asr_req(), kz_term:ne_binary()) -> asr_req().
@@ -388,8 +363,7 @@ set_content_type(Request, ContentType) ->
     Request#asr_req{content_type=ContentType}.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% description setter
+%% @doc description setter
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_description(asr_req(), kz_term:ne_binary()) -> asr_req().
@@ -405,8 +379,7 @@ set_impact_reseller(Request, ImpactReseller) ->
     Request#asr_req{impact_reseller=ImpactReseller}.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% voicemail/recording's media_id setter
+%% @doc voicemail/recording's media_id setter
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_media_id(asr_req(), kz_term:ne_binary()) -> asr_req().
@@ -414,8 +387,7 @@ set_media_id(Request, MediaId) ->
     Request#asr_req{media_id=MediaId}.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% voicemail/recording's media_id setter
+%% @doc voicemail/recording's media_id setter
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_modb(asr_req(), kz_term:ne_binary()) -> asr_req().
@@ -423,8 +395,7 @@ set_modb(Request, AccountMODB) ->
     Request#asr_req{account_modb=AccountMODB}.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% voicemail/recording's media_id setter
+%% @doc voicemail/recording's media_id setter
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_recording_seconds(asr_req(), non_neg_integer()) -> asr_req().
@@ -432,8 +403,7 @@ set_recording_seconds(Request, Duration) ->
     Request#asr_req{recording_seconds=Duration}.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% reseller_id setter
+%% @doc reseller_id setter
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_reseller_id(asr_req(), kz_term:ne_binary()) -> asr_req().
@@ -449,8 +419,7 @@ set_timestamp(Request, Timestamp) ->
     Request#asr_req{timestamp=Timestamp}.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% transcription response setter
+%% @doc transcription response setter
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_transcription(asr_req(), 'undefined' | asr_resp()) -> asr_req().
@@ -458,8 +427,7 @@ set_transcription(Request, Transcription) ->
     Request#asr_req{transcription=Transcription}.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% fold over list of functions to set asr_req fields
+%% @doc fold over list of functions to set asr_req fields
 %% @end
 %%------------------------------------------------------------------------------
 -spec setters(asr_req(), setters()) -> asr_req().
@@ -468,8 +436,7 @@ setters(Request, [_|_]=Setters) ->
     lists:foldl(fun setters_fold/2, Request, Setters).
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% fold fun patterns for setters
+%% @doc fold fun patterns for setters
 %% @end
 %%------------------------------------------------------------------------------
 -spec setters_fold(setter_kv(), asr_req()) -> asr_req().
@@ -504,16 +471,14 @@ transcribe(Request) ->
 transcribe_fold_fun(F, Request) when is_function(F, 1) -> F(Request).
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% transcription response getter
+%% @doc transcription response getter
 %% @end
 %%------------------------------------------------------------------------------
 -spec transcription(asr_req()) -> 'undefined' | asr_resp().
 transcription(#asr_req{transcription=Transcription}) -> Transcription.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% did the asr_request pass validation
+%% @doc did the asr_request pass validation
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_valid(asr_req()) -> boolean().
@@ -533,8 +498,7 @@ is_valid_transcription(Res, Txt, _) ->
     'undefined'.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% validate the content can be processed
+%% @doc validate the content can be processed
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate(asr_req()) -> asr_req().

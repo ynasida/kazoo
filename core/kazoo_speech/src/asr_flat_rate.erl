@@ -63,68 +63,6 @@ debit(#asr_req{account_authorized='true', reseller_authorized='true', impact_res
 debit(Request) ->
     asr_request:add_error(Request, {'error', 'asr_provider_failure', <<"unauthorized">>}).
 
-%update_service_quantities(Request) ->
-%    Quantities = kz_services_asr:quantities(AccountId),
-%    lager:notice("updating service quantites ~p", [Quantities]),
-%    kzd_services:set_account_quantities(kz_services_asr:fetch(AccountId), Quantities),
-
-%%%------------------------------------------------------------------------------
-%%% @doc
-%%% Verify the ASR request has sufficient funds
-%%% @end
-%%%------------------------------------------------------------------------------
-%-spec maybe_credit_available(asr_req()) -> asr_req().
-%maybe_credit_available(#asr_req{account_id=AccountId, asr_provider=Provider}=Request) ->
-%    Rate = kz_services_asr:flat_rate(AccountId, Provider),
-%    lager:notice("Using Rate: ~p~n", [Rate]),
-%    case kz_currency:available_dollars(AccountId, 0) of
-%        {'error', _Msg} -> asr_request:add_error(Request, {'error', 'insufficient_funds'});
-%         Dollars -> maybe_update_services(Request, Dollars, Rate)
-%    end.
-
-%%%------------------------------------------------------------------------------
-%%% @doc
-%%% @end
-%%%------------------------------------------------------------------------------
-%-spec maybe_consume_flat_rate(asr_req(), kz_currency:dollars(), kz_currency:dollars()) -> asr_req().
-%maybe_consume_flat_rate(#asr_req{impact_reseller='false'}=Request, Dollars, Rate) ->
-%    case kz_services_standing:(Dollars, Rate) of
-%      'false' ->
-%            asr_request:add_error(Request, {'error', 'insufficient_funds'});
-%        'true' ->
-%            Request#asr_req{account_authorized='true', amount=Rate}
-%    end;
-%maybe_consume_flat_rate(#asr_req{account_id=_AccountId, reseller_id=ResellerId, impact_reseller='true'}=Request, Dollars, Rate) ->
-%    ResellerDollars = kz_currency:available_dollars(ResellerId, 0),
-%    case {has_enough_credit(Dollars, Rate), has_enough_credit(ResellerDollars, Rate)} of
-%        {'true', 'true'} ->
-%            Request#asr_req{account_authorized='true', reseller_authorized='true', amount=Rate};
-%        {_, _} ->
-%            asr_request:add_error(Request, {'error', 'insufficient_funds'})
-%    end.
-
-%%-spec has_enough_credit(kz_currency:dollars(), kz_currency:dollars()) -> boolean().
-%%has_enough_credit(Credit, Debit) ->
-%%  Credit - Debit >= 0.
-
-%%%------------------------------------------------------------------------------
-%%% @doc
-%%% @end
-%%%-----------------------------------------------------------------------------
-%-spec maybe_update_services(asr_req()) -> asr_req().
-%maybe_update_services(#asr_req{account_id=AccountId, asr_provider=Provider}=Request) ->
-
-%%%------------------------------------------------------------------------------
-%%% @doc
-%%% @end
-%%%-----------------------------------------------------------------------------
-%-spec update_services(kz_services:service(), kz_json:object(), kz_json:object()) -> boolean().
-%update_services(Services, CurrentJObj, ProposedJObj) ->
-%   lager:notice("~nCurrent: ~p~n, Proposed:~p~n", [CurrentJObj, ProposedJObj]),
-%    kazoo_services:commit_updates(Services
-%                                 ,kz_services:to_billables(CurrentJObj)
-%                                 ,kz_services:to_billables(ProposedJObj)
-%                                 ).
 
 %%%------------------------------------------------------------------------------
 %%% @doc
