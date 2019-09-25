@@ -14,6 +14,7 @@
         ,amount/1, set_amount/2
         ,asr_provider/1, set_asr_provider/2
         ,attachment/1, set_attachment/2
+        ,billing_method/1
         ,billing_seconds/1
         ,call_id/1
         ,content_type/1, set_content_type/2
@@ -28,6 +29,7 @@
         ,new/0
         ,recording_seconds/1, set_recording_seconds/2
         ,reseller_id/1, reseller_id/2, set_reseller_id/2
+        ,services/1, set_services/2
         ,setters/2
         ,timestamp/1, set_timestamp/2
         ,modb/1, set_modb/2
@@ -96,7 +98,14 @@ attachment(#asr_req{attachment_id=AttachmentId}) -> AttachmentId.
 %% @end
 %%------------------------------------------------------------------------------
 -spec authorize(asr_req()) -> asr_req().
-authorize(Request) -> asr_flat_rate:authorize(Request).
+authorize(#asr_req{billing_method=BillingMethod}=Request) -> BillingMethod:authorize(Request).
+
+%%------------------------------------------------------------------------------
+%% @doc billing_method getter
+%% @end
+%%------------------------------------------------------------------------------
+-spec billing_method(asr_req()) -> asr_billing_method().
+billing_method(#asr_req{billing_method=BillingMethod}) -> BillingMethod.
 
 %%------------------------------------------------------------------------------
 %% @doc billing_seconds getter
@@ -175,6 +184,7 @@ from_call(Request, Call) ->
                    ,'call_id' = kapps_call:call_id(Call)
                    ,'description' = <<ASRProvider/binary, " ASR transcription">>
                    ,'reseller_id' = kzd_accounts:reseller_id(AccountId)
+                   ,'services' = kz_services:fetch(AccountId)
                    }.
 %%------------------------------------------------------------------------------
 %% @doc
@@ -293,6 +303,13 @@ reseller_id(AccountId, CCVs) ->
         'undefined' -> kz_services_reseller:find_id(AccountId);
         ResellerId -> ResellerId
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc services
+%% @end
+%%------------------------------------------------------------------------------
+-spec services(asr_req()) -> kz_services:services().
+services(#asr_req{services=Services}) -> Services.
 
 %%------------------------------------------------------------------------------
 %% @doc account_db setter
@@ -414,6 +431,14 @@ set_reseller_id(Request, ResellerId) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec set_services(asr_req(), kz_services:services()) -> asr_req().
+set_services(Request, Services) ->
+    Request#asr_req{services=Services}.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec set_timestamp(asr_req(), non_neg_integer()) -> asr_req().
 set_timestamp(Request, Timestamp) ->
     Request#asr_req{timestamp=Timestamp}.
@@ -455,14 +480,22 @@ timestamp(#asr_req{timestamp=Timestamp}) -> Timestamp.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec transcribe(asr_req()) -> asr_resp().
+-spec transcribe(asr_req()) -> asr_req().
 transcribe(Request) ->
     Validators = [fun authorize/1
                  ,fun validate/1
                  ,fun maybe_transcribe/1
-                 ,fun asr_flat_rate:debit/1
+                 ,fun debit/1
                  ],
     lists:foldl(fun transcribe_fold_fun/2, Request, Validators).
+
+-spec debit(asr_req()) -> asr_req().
+debit(#asr_req{billing_method=BillingMethod}=Request) -> BillingMethod:debit(Request).
+
+%-spec spawn_services_update(asr_req()) -> no_return().
+%spawn_services_update(#asr_req{billing_method=BillingMethod}=Request) ->
+%    Result = kz_util:spawn(fun BillingMethod:debit/1, [Request]),
+%    lager:notice("~p~n", [Result]).
 
 %%------------------------------------------------------------------------------
 %% @doc

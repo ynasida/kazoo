@@ -44,6 +44,8 @@
                     {'error', provider_error()} |
                     {'error',  'asr_provider_failure', kz_json:object()}.
 
+-type asr_billing_method() :: 'asr_flat_rate'.
+
 -record(asr_req, {'account_authorized' = 'false' :: boolean()
                  ,'account_db' :: kz_term:binary()
                  ,'account_id' :: kz_term:binary()
@@ -51,6 +53,7 @@
                  ,'amount' = 0 :: non_neg_integer()
                  ,'attachment_id' :: kz_term:binary()
                  ,'asr_provider' :: kz_term:binary()
+                 ,'billing_method' = 'asr_flat_rate' :: asr_billing_method()
                  ,'billing_seconds' = 0 :: non_neg_integer()
                  ,'call_id'  :: kz_term:binary()
                  ,'content_type' :: kz_term:binary()
@@ -61,13 +64,16 @@
                  ,'recording_seconds' = 0 :: non_neg_integer()
                  ,'reseller_id' = 'undefined' ::  'undefined' | kz_term:ne_binary()
                  ,'reseller_authorized' = 'false' :: boolean()
+                 ,'services' = 'undefined' :: 'undefined' | kz_services:services()
                  ,'transcription' = 'undefined' :: 'undefined' | asr_resp()
                  ,'timestamp' = 0 :: non_neg_integer()
                  ,'validated' = 'false' :: boolean()
                  }).
 
 -type asr_req() :: #asr_req{}.
--export_type([asr_req/0]).
+-export_type([asr_req/0
+             ,asr_billing_method/0
+             ]).
 
 -define(KAZOO_SPEECH_HRL, 'true').
 -endif.

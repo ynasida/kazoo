@@ -27,7 +27,6 @@
 authorize(#asr_req{account_id=AccountId, asr_provider=Provider, impact_reseller='false'}=Request) ->
     Services = kz_services:fetch(AccountId),
     Amount = kz_services_asr:flat_rate(AccountId, Provider),
-
     case maybe_consume_flat_rate(Services, Amount) of
         {'true', _} ->
             Request#asr_req{account_authorized='true', amount=Amount};
@@ -37,7 +36,6 @@ authorize(#asr_req{account_id=AccountId, asr_provider=Provider, impact_reseller=
     Account = kz_services:fetch(AccountId),
     Reseller = kz_services:fetch(ResellerId),
     Amount = kz_services_asr:flat_rate(AccountId, Provider),
-
     case {maybe_consume_flat_rate(Account, Amount), maybe_consume_flat_rate(Reseller, Amount)} of
         {{'true', _}, {'true', _}} ->
             Request#asr_req{account_authorized='true', reseller_authorized='true', amount=Amount};
@@ -49,54 +47,19 @@ authorize(#asr_req{account_id=AccountId, asr_provider=Provider, impact_reseller=
             Request#asr_req{account_authorized='false', reseller_authorized='false', amount=Amount}
     end.
 
-
 %%%------------------------------------------------------------------------------
-%%% @doc
+%%% @doc create a ledger entry for the account and maybe the Reseller
 %%% @end
 %%%------------------------------------------------------------------------------
--spec debit(asr_req()) -> asr_req().
-debit(#asr_req{account_authorized='true', impact_reseller='false'}=Request) ->
-    maybe_debit(Request);
-debit(#asr_req{account_authorized='true', reseller_authorized='true', impact_reseller='true'}=Request) ->
-    maybe_debit(Request);
-debit(Request) ->
-    asr_request:add_error(Request, {'error', 'asr_provider_failure', <<"unauthorized">>}).
+-spec create_ledger_entry(asr_req()) -> asr_req().
+create_ledger_entry(#asr_req{account_id=AccountId, impact_reseller='false'}=Request) ->
+    lager:debug("creating asr ledger entry."),
+    create_ledger_entry(AccountId, Request);
+create_ledger_entry(#asr_req{account_id=AccountId, reseller_id=ResellerId, impact_reseller='true'}=Request) ->
+    lists:foldl(fun create_ledger_entry/2, Request, [AccountId, ResellerId]).
 
-
-%%%------------------------------------------------------------------------------
-%%% @doc
-%%% @end
-%%%------------------------------------------------------------------------------
--spec maybe_consume_flat_rate(kz_services:services(), kz_currency:dollars()) -> kz_services_standing:acceptable_return().
-maybe_consume_flat_rate(Services, Amount) ->
-    Options = #{amount => kz_currency:dollars_to_units(Amount)},
-    kz_services_standing:acceptable(Services, Options).
-
-%%%------------------------------------------------------------------------------
-%%% @doc
-%%% @end
-%%%-----------------------------------------------------------------------------
--spec maybe_debit(asr_req()) -> asr_req().
-maybe_debit(#asr_req{account_authorized='true', impact_reseller='false'}=Request) ->
-    lager:debug("impact reseller is false"),
-    create_ledger_usage(Request);
-maybe_debit(#asr_req{account_id=AccountId, reseller_id=ResellerId, account_authorized='true', reseller_authorized='true'}=Request) ->
-    lager:debug("impact reseller is true updating accounts [~s, ~s]", [AccountId, ResellerId]),
-    lists:foldl(fun create_ledger_usage/2, Request, [AccountId, ResellerId]);
-maybe_debit(Request) -> Request.
-
-%%%------------------------------------------------------------------------------
-%%% @doc
-%%% @end
-%%%------------------------------------------------------------------------------
--spec create_ledger_usage(asr_req()) -> asr_req().
-create_ledger_usage(#asr_req{account_id=AccountId}=Request) ->
-    lager:info("creating ledger entry."),
-    create_ledger_usage(Request, AccountId).
-
--spec create_ledger_usage(asr_req(), kz_term:ne_binary()) -> asr_req().
-create_ledger_usage(Request, AccountId) ->
-    lager:notice("REQUEST: ~p~n", [Request]),
+-spec create_ledger_entry(kz_term:ne_binary(), asr_req()) -> asr_req().
+create_ledger_entry(AccountId, Request) ->
     Setters =
         props:filter_empty(
           [{fun kz_ledger:set_account/2, asr_request:account_id(Request)}
@@ -115,6 +78,80 @@ create_ledger_usage(Request, AccountId) ->
         {'ok', _} -> Request;
         {'error', Msg} -> asr_request:add_error(Request, {'error', 'asr_provider_failure', kz_term:to_binary(Msg)})
     end.
+
+%%%------------------------------------------------------------------------------
+%%% @doc
+%%% @end
+%%%------------------------------------------------------------------------------
+-spec debit(asr_req()) -> asr_req().
+debit(#asr_req{account_authorized='true', impact_reseller='false'}=Request) ->
+    maybe_debit(Request);
+debit(#asr_req{account_authorized='true', reseller_authorized='true', impact_reseller='true'}=Request) ->
+    maybe_debit(Request);
+debit(Request) ->
+    asr_request:add_error(Request, {'error', 'asr_provider_failure', <<"unauthorized">>}).
+
+%%%------------------------------------------------------------------------------
+%%% @doc
+%%% @end
+%%%------------------------------------------------------------------------------
+-spec maybe_consume_flat_rate(kz_services:services(), kz_currency:dollars()) -> kz_services_standing:acceptable_return().
+maybe_consume_flat_rate(Services, Amount) ->
+    Options = #{amount => kz_currency:dollars_to_units(Amount)},
+    kz_services_standing:acceptable(Services, Options).
+
+%%%------------------------------------------------------------------------------
+%%% @doc
+%%% @end
+%%%-----------------------------------------------------------------------------
+-spec maybe_debit(asr_req()) -> asr_req().
+maybe_debit(#asr_req{account_authorized='true', impact_reseller='false'}=Request) ->
+    lager:debug("impact reseller is false"),
+    update_services(Request);
+maybe_debit(#asr_req{account_id=AccountId, reseller_id=ResellerId, account_authorized='true', reseller_authorized='true'}=Request) ->
+    lager:debug("impact reseller is true updating accounts [~s, ~s]", [AccountId, ResellerId]),
+    update_services(Request);
+maybe_debit(Request) -> Request.
+
+%%%------------------------------------------------------------------------------
+%%% @doc update ledger and service plan items
+%%% @end
+%%%------------------------------------------------------------------------------
+-spec update_services(asr_req()) -> asr_req().
+update_services(Request) ->
+    Routines = [fun create_ledger_entry/1
+               ,fun update_service_quantities/1
+               ],
+    lists:foldl(fun(F, Acc) -> F(Acc) end, Request, Routines).
+
+%%%------------------------------------------------------------------------------
+%%% @doc entry point to update service plan quantities
+%%% @end
+%%%------------------------------------------------------------------------------
+-spec update_service_quantities(asr_req()) -> asr_req().
+update_service_quantities(#asr_req{services=Services}=Request) ->
+    ServicesJObj = kz_services:current_services_jobj(Services),
+    Proposed = update_services_jobj(Request, ServicesJObj),
+    Request#asr_req{services=maybe_update_service_quantities(Services, ServicesJObj, Proposed)}.
+
+%%%------------------------------------------------------------------------------
+%%% @doc create a new services jobj with updated counts
+%%% @end
+%%%------------------------------------------------------------------------------
+update_services_jobj(#asr_req{account_id=AccountId}=_Request, ServicesJObj) ->
+    Current = kz_json:get_value([<<"quantities">>, <<"account">>], ServicesJObj),
+    ASR = kz_services_asr:quantities(AccountId),
+    kz_json:merge(Current, ASR).
+
+%%%------------------------------------------------------------------------------
+%%% @doc save the new services jobj to the services doc
+%%% @end
+%%%------------------------------------------------------------------------------
+-spec maybe_update_service_quantities(kz_services:services(), kz_json:object(), kz_json:object()    ) -> kz_services:services().
+maybe_update_service_quantities(Services, Current, Proposed) ->
+    NewJObj = kzd_services:set_account_quantities(Current, Proposed),
+    Services0 = kz_services:set_services_jobj(Services, NewJObj),
+    kz_services:save_services_jobj(Services0).
 
 %%%------------------------------------------------------------------------------
 %%% @doc
