@@ -130,7 +130,12 @@ attempt_endpoints(Endpoints, Data, Call) ->
 
 -spec get_endpoints(kz_json:object(), kapps_call:call()) -> kz_json:objects().
 get_endpoints(Data, Call) ->
-    receive_endpoints(start_builders(Data, Call)).
+    Key = <<"Endpoint-Delay">>,
+    F = fun(AObj, BObj) ->
+                kz_json:get_integer_value(Key, AObj, 0) =<
+                    kz_json:get_integer_value(Key, BObj, 0)
+        end,
+    lists:sort(F, receive_endpoints(start_builders(Data, Call))).
 
 -spec receive_endpoints(kz_term:pid_refs()) -> kz_json:objects().
 receive_endpoints(Builders) ->
