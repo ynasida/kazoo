@@ -492,11 +492,6 @@ transcribe(Request) ->
 -spec debit(asr_req()) -> asr_req().
 debit(#asr_req{billing_method=BillingMethod}=Request) -> BillingMethod:debit(Request).
 
-%-spec spawn_services_update(asr_req()) -> no_return().
-%spawn_services_update(#asr_req{billing_method=BillingMethod}=Request) ->
-%    Result = kz_util:spawn(fun BillingMethod:debit/1, [Request]),
-%    lager:notice("~p~n", [Result]).
-
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
