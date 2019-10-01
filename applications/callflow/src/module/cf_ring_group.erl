@@ -21,7 +21,9 @@
 -export([handle/2]).
 
 -ifdef(TEST).
--export([weighted_random_sort/1]).
+-export([weighted_random_sort/1
+        ,resolve_endpoint_ids/2
+        ]).
 -endif.
 
 -type group_weight() :: 1..100.
