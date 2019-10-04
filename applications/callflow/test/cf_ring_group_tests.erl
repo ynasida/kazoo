@@ -31,36 +31,47 @@ weighted_random_sort_test_() ->
 
 %% HELP-260010392
 help_10392_test_() ->
-    UserId = <<"help-10392-user-id">>,
-    DevId = <<"help-10392-device-id">>,
-    GroupId = <<"help-10392-group-id">>,
+    {'setup'
+    ,fun setup_help_10392/0
+    ,fun cleanup_help_10392/1
+    ,fun(_ReturnOfSetup) ->
+             help_10392()
+     end
+    }.
 
-    meck:new('kz_datamgr', ['passthrough']),
-    meck:new('kz_attributes', ['passthrough']),
-    F = fun(_, _) -> help_10392_open_cache_doc(UserId) end,
-    meck:expect('kz_datamgr', 'open_cache_doc', F),
-    meck:expect('kz_attributes', 'owned_by', fun(_, _, _) -> [DevId] end),
+setup_help_10392() ->
+    {'ok', _} = application:ensure_all_started('kazoo_bindings'),
+    kz_fixturedb_util:start_me('true').
 
-    Endpoint = help_10392_endpoint(UserId),
+cleanup_help_10392(Pid) ->
+    'ok' = application:stop('kazoo_bindings'),
+    kz_fixturedb_util:stop_me(Pid).
+
+help_10392() ->
+    AccountId = <<"account0000000000000000000000001">>,
+    UserId = <<"user0000000000000000000000000001">>,
+    DeviceId = <<"device00000000000000000000000001">>,
+    GroupId = <<"group000000000000000000000000001">>,
+
+    Endpoint = help_10392_user_endpoint(UserId),
     User = kz_json:set_value(<<"delay">>, 0, Endpoint),
-    Group = help_10392_group(GroupId),
-    EndDelay10 = {DevId, help_10392_add_source(help_10392_add_group_weight(Endpoint))},
-    EndDelay0 = {DevId, help_10392_add_source(User)},
+    Group = help_10392_group_endpoint(GroupId),
+    EndpointDelay10 = {DeviceId
+                      ,help_10392_add_source(help_10392_add_group_weight(Endpoint))
+                      },
+    EndpointDelay0 = {DeviceId, help_10392_add_source(User)},
 
-    Data0 = help_10392_data([User, Group]),
-    Data1 = help_10392_data([Group, User]),
-    Data2 = help_10392_data([User, User]),
-    Data3 = help_10392_data([Group, Group]),
-    Expected0 = [EndDelay0, EndDelay10],
-    Expected1 = [EndDelay10, EndDelay0],
-    Expected2 = [EndDelay0],
-    Expected3 = [EndDelay10],
+    Call = kapps_call:set_account_id(AccountId, kapps_call:new()),
 
-    Resp0 = cf_ring_group:resolve_endpoint_ids(Data0, kapps_call:new()),
-    Resp1 = cf_ring_group:resolve_endpoint_ids(Data1, kapps_call:new()),
-    Resp2 = cf_ring_group:resolve_endpoint_ids(Data2, kapps_call:new()),
-    Resp3 = cf_ring_group:resolve_endpoint_ids(Data3, kapps_call:new()),
-    meck:unload(),
+    Resp0 = cf_ring_group:resolve_endpoint_ids(help_10392_data([User, Group]), Call),
+    Resp1 = cf_ring_group:resolve_endpoint_ids(help_10392_data([Group, User]), Call),
+    Resp2 = cf_ring_group:resolve_endpoint_ids(help_10392_data([User, User]), Call),
+    Resp3 = cf_ring_group:resolve_endpoint_ids(help_10392_data([Group, Group]), Call),
+
+    Expected0 = [EndpointDelay0, EndpointDelay10],
+    Expected1 = [EndpointDelay10, EndpointDelay0],
+    Expected2 = [EndpointDelay0],
+    Expected3 = [EndpointDelay10],
 
     [{"Honor RG member's delay and order: [User, Group]", ?_assertEqual(Expected0, Resp0)}
     ,{"Honor RG member's delay and order: [Group, User]", ?_assertEqual(Expected1, Resp1)}
@@ -68,22 +79,22 @@ help_10392_test_() ->
     ,{"Honor RG member's delay and order: [Group, Group]", ?_assertEqual(Expected3, Resp3)}
     ].
 
-help_10392_endpoint(UserId) ->
+help_10392_user_endpoint(UserId) ->
     kz_json:from_list([{<<"endpoint_type">>,<<"user">>}
                       ,{<<"id">>, UserId}
                       ,{<<"delay">>,10}
                       ,{<<"timeout">>,20}
                       ]).
 
-help_10392_add_group_weight(Endpoint) ->
-    kz_json:set_value(<<"weight">>, 20, Endpoint).
-
-help_10392_group(GroupId) ->
+help_10392_group_endpoint(GroupId) ->
     kz_json:from_list([{<<"endpoint_type">>, <<"group">>}
                       ,{<<"id">>, GroupId}
                       ,{<<"delay">>, 10}
                       ,{<<"timeout">>, 20}
                       ]).
+
+help_10392_add_group_weight(Endpoint) ->
+    kz_json:set_value(<<"weight">>, 20, Endpoint).
 
 help_10392_data(TestEndpoints) ->
     kz_json:from_list([{<<"name">>, <<"RG HELP-10392">>}
@@ -96,11 +107,3 @@ help_10392_data(TestEndpoints) ->
 
 help_10392_add_source(Endpoint) ->
     kz_json:set_value(<<"source">>, <<"cf_ring_group">>, Endpoint).
-
-%% Since the functions that process the returned value from this function
-%% (cf_ring_group:[unordered_group_members/3, order_group_members/3]) only need the
-%% `endpoints' key's value, it is returning a json with only that key, instead of a full
-%% `group' object.
-help_10392_open_cache_doc(UserId) ->
-    Endpoints = [{UserId, [{<<"type">>, <<"user">>}, {<<"weight">>, 1}]}],
-    {ok, kz_json:from_list_recursive([{<<"endpoints">>, Endpoints}])}.
