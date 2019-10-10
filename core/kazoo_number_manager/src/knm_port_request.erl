@@ -14,6 +14,7 @@
         ,public_fields/0
         ,public_fields/1
         ,get/1
+        ,get_portin_number/2
         ,new/2
         ,account_active_ports/1
         ,descendant_active_ports/1
@@ -50,6 +51,7 @@
 -define(ACTIVE_PORT_LISTING, <<"port_requests/active_port_request">>).
 -define(DESCENDANT_ACTIVE_PORT_LISTING, <<"port_requests/listing_by_descendant_state">>).
 -define(ACTIVE_PORT_IN_NUMBERS, <<"port_requests/port_in_numbers">>).
+-define(PORT_NUM_LISTING, <<"port_requests/phone_numbers_listing">>).
 
 -type transition_response() :: {'ok', kz_json:object()} |
                                {'error', 'invalid_state_transition' | 'user_not_allowed' | kz_json:object()}.
@@ -131,6 +133,23 @@ get(DID=?NE_BINARY) ->
         {'ok', Port} -> {'ok', kz_json:get_value(<<"doc">>, Port)};
         {'error', _E}=Error ->
             lager:debug("failed to query for port number '~s': ~p", [DID, _E]),
+            Error
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_portin_number(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} |
+                                                                     {'error', any()}.
+get_portin_number(AccountId, DID=?NE_BINARY) ->
+    ViewOptions = [{'key', [AccountId, DID]}, 'include_docs'],
+    Result = kz_datamgr:get_single_result(?KZ_PORT_REQUESTS_DB, ?PORT_NUM_LISTING, ViewOptions),
+    case Result of
+        {'ok', Docs} ->
+            {'ok', kz_json:get_value(<<"doc">>, Docs)};
+        {'error', _E}=Error ->
+            lager:debug("failed to find portin number '~s': ~p", [DID, _E]),
             Error
     end.
 
