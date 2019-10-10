@@ -248,7 +248,7 @@ validate_number_ownership_fold(Number, ReasonJObj, Unauthorized) ->
                                       assignment_updates().
 apply_assignment_updates(Updates, Context) ->
     AccountId = cb_context:account_id(Context),
-    AccountUpdates = lists:foldl(fun({Num, App}, X) -> [{Num, App, AccountId} | X] end, [], Updates), 
+    AccountUpdates = lists:foldl(fun({Num, App}, X) -> [{Num, App, AccountId} | X] end, [], Updates),
     {PRUpdates, NumUpdates} = lists:foldl(fun split_port_requests/2, {[], []}, AccountUpdates),
     PortAssignResults = assign_to_port_number(PRUpdates),
     AssignResults = maybe_assign_to_app(NumUpdates, AccountId),
@@ -261,7 +261,7 @@ apply_assignment_updates(Updates, Context) ->
 %%
 %% @end
 %%------------------------------------------------------------------------------
--spec split_port_requests(assignment_to_apply(), {port_req_assignments(), assignments_to_apply()}) ->
+-spec split_port_requests({kz_term:ne_binary(), kz_term:api_binary(), kz_term:ne_binary()}, {port_req_assignments(), assignments_to_apply()}) ->
                                  {port_req_assignments(), assignments_to_apply()}.
 split_port_requests({DID, Assign, AccountId}=ToApply, {PRUpdates, NumUpdates}) ->
     Num = knm_converters:normalize(DID),
