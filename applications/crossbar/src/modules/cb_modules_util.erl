@@ -263,13 +263,13 @@ apply_assignment_updates(Updates, Context) ->
 %%------------------------------------------------------------------------------
 -spec split_port_requests({kz_term:ne_binary(), kz_term:api_binary(), kz_term:ne_binary()}, {port_req_assignments(), assignments_to_apply()}) ->
                                  {port_req_assignments(), assignments_to_apply()}.
-split_port_requests({DID, Assign, AccountId}=ToApply, {PRUpdates, NumUpdates}) ->
+split_port_requests({DID, Assign, AccountId}, {PRUpdates, NumUpdates}) ->
     Num = knm_converters:normalize(DID),
     case knm_port_request:get_portin_number(AccountId, Num) of
         {'ok', JObj} ->
             {[{Num, Assign, JObj}|PRUpdates], NumUpdates};
         {'error', _} ->
-            {PRUpdates, [ToApply|NumUpdates]}
+            {PRUpdates, [{DID, Assign}|NumUpdates]}
     end.
 
 -spec assign_to_port_number(port_req_assignments()) ->
