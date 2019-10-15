@@ -23,6 +23,7 @@
 -ifdef(TEST).
 -export([weighted_random_sort/1
         ,resolve_endpoint_ids/2
+        ,get_endpoints/2
         ]).
 -endif.
 
