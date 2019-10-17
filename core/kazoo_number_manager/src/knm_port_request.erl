@@ -575,7 +575,7 @@ transition_numbers(PortReq) ->
               ,{'ported_in', 'true'}
               ,{'public_fields', kz_json:from_list([{<<"port_id">>, PortReqId}])}
               ],
-    lager:debug("creating local numbers for port ~s", [PortReqId]),
+    lager:debug("account ~p creating local numbers for port ~s", [AccountId, PortReqId]),
     Numbers = kz_json:get_keys(kzd_port_requests:numbers(PortReq)),
     case knm_numbers:create(Numbers, Options) of
         #{ko := KOs} when map_size(KOs) =:= 0 ->
@@ -614,12 +614,11 @@ maybe_reconcile_app_used_by(App, App, _Num, _JObj) ->
     {'ok', App};
 maybe_reconcile_app_used_by(_App, App, Num, JObj) ->
     lager:warning("port in number ~p app ~p replaced by correct app ~p", [Num, _App, App]),
-    assign_to_app(Num, App, JObj),
+    _Ok = assign_to_app(Num, App, JObj),
     {'ok', App}.
 
 query_app_view(AccountDb, View, Num) ->
     Options = [{'key', Num}],
-    lager:info("AccountDb ~p, Num ~p", [AccountDb, Num]),
     Result = kz_datamgr:get_results(AccountDb, View, Options),
     case Result of
         {'ok', []} ->
