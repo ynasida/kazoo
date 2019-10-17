@@ -30,6 +30,7 @@
         ]).
 
 -export([transition_metadata/2, transition_metadata/3, transition_metadata/4]).
+-export([app_used_by_portin/2,used_by_which_app/2]).
 -export_type([transition_metadata/0]).
 
 -compile({'no_auto_import', [get/1]}).
@@ -52,6 +53,10 @@
 -define(DESCENDANT_ACTIVE_PORT_LISTING, <<"port_requests/listing_by_descendant_state">>).
 -define(ACTIVE_PORT_IN_NUMBERS, <<"port_requests/port_in_numbers">>).
 -define(PORT_NUM_LISTING, <<"port_requests/phone_numbers_listing">>).
+-define(CALLFLOW_LIST, <<"callflows/listing_by_number">>).
+-define(TRUNKSTORE_LIST, <<"trunkstore/lookup_did">>).
+-define(APP_VIEW_MAP, #{'callflow' => ?CALLFLOW_LIST
+                       ,'trunkstore' => ?TRUNKSTORE_LIST}).
 
 -type transition_response() :: {'ok', kz_json:object()} |
                                {'error', 'invalid_state_transition' | 'user_not_allowed' | kz_json:object()}.
@@ -279,9 +284,11 @@ states_to_scheduled(_AllowFromSubmitted='true') ->
 
 -spec transition_to_complete(kz_json:object(), transition_metadata()) -> transition_response().
 transition_to_complete(JObj, Metadata) ->
+    lager:info("JObj ~p~nMetadata ~p", [JObj, Metadata]),
     case transition(JObj, Metadata, [?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECTED], ?PORT_COMPLETED) of
         {'error', _}=E -> E;
-        {'ok', Transitioned} -> completed_port(Transitioned)
+        {'ok', Transitioned} ->
+            completed_port(Transitioned, JObj)
     end.
 
 -spec transition_to_rejected(kz_json:object(), transition_metadata()) -> transition_response().
@@ -525,10 +532,15 @@ migrate() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec completed_port(kz_json:object()) -> transition_response().
-completed_port(PortReq) ->
-    lager:debug("transitioning numbers to active"),
-    transition_numbers(PortReq).
+-spec completed_port(kz_json:object(), kz_json:object()) -> transition_response().
+completed_port(PortReq, JObj) ->
+    AccountId = kz_doc:account_id(PortReq),
+    Numbers = kz_json:get_keys(kzd_port_requests:numbers(PortReq)),
+    lager:debug("transitioning numbers ~p to active", [Numbers]),
+    {'ok', App} = maybe_reconcile_app_used_by(lists:last(Numbers), AccountId, JObj),
+    Rc = transition_numbers(PortReq),
+    update_used_by(Numbers, App),
+    Rc.
 
 -spec completed_portin(kz_term:ne_binary(), kz_term:ne_binary(), transition_metadata()) -> 'ok' | {'error', any()}.
 completed_portin(Num, AccountId, #{optional_reason := OptionalReason}) ->
@@ -581,6 +593,69 @@ transition_numbers(PortReq) ->
                     {'error', PortReq}
             end
     end.
+
+update_used_by(_Numbers, 'undefined') -> ok;
+update_used_by(Numbers, App) ->
+    lager:debug("update number ~p with used_by ~p", [Numbers, App]),
+    knm_numbers:assign_to_app(Numbers, App).
+
+-spec app_used_by_portin(kz_term:ne_binary(), kz_json:object()) -> 'undefined' | kz_json:object().
+app_used_by_portin(Number, JObj) ->
+    Numbers = kzd_port_requests:numbers(JObj),
+    kz_json:get_value([Number, ?USED_BY_KEY], Numbers).
+
+maybe_reconcile_app_used_by(Num, AccountId, JObj) ->
+    AccountDb = kz_util:format_account_db(AccountId),
+    PortInApp = app_used_by_portin(Num, JObj),
+    AppUsage = used_by_which_app(AccountDb, Num),
+    maybe_reconcile_app_used_by(PortInApp, AppUsage, Num, JObj).
+
+maybe_reconcile_app_used_by(App, App, _Num, _JObj) ->
+    {'ok', App};
+maybe_reconcile_app_used_by(_App, App, Num, JObj) ->
+    lager:warning("port in number ~p app ~p replaced by correct app ~p", [Num, _App, App]),
+    assign_to_app(Num, App, JObj),
+    {'ok', App}.
+
+query_app_view(AccountDb, View, Num) ->
+    Options = [{'key', Num}],
+    lager:info("AccountDb ~p, Num ~p", [AccountDb, Num]),
+    Result = kz_datamgr:get_results(AccountDb, View, Options),
+    case Result of
+        {'ok', []} ->
+            lager:debug("not found number ~p via view ~p", [Num, View]),
+            {error, not_found};
+        {'ok', Doc} ->
+            {'ok', Doc};
+        E ->
+            lager:debug("Error find number ~p document view ~p error ~p", [Num, View, E]),
+            {error, E}
+    end.
+
+is_used_by_app(AccountDb, Num, App) ->
+    View = maps:get(App, ?APP_VIEW_MAP, undefined),
+    is_used_by_app(AccountDb, View, Num, App).
+
+is_used_by_app(_AccountDb, undefined, _Num, _App) ->
+    lager:info('undefined app ~p', [_App]),
+    undefined;
+is_used_by_app(AccountDb, View, Num, App) ->
+    case query_app_view(AccountDb, View, Num) of
+        {'ok', _Doc} -> App;
+        _E -> undefined
+    end.
+
+-spec used_by_which_app(kz_term:ne_binary(), kz_term:ne_binary()) -> 'undefined' | kz_term:ne_binary().
+used_by_which_app(AccountDb, Num) ->
+    which_app(is_used_by_app(AccountDb, Num, 'callflow')
+             ,is_used_by_app(AccountDb, Num, 'trunkstore')).
+
+which_app('undefined', 'undefined') -> 'undefined';
+which_app('callflow', 'undefined') -> <<"callflow">>;
+which_app('undefined', 'trunkstore') -> <<"trunkstore">>;
+which_app(_Callflow, _Trunkstore) ->
+    lager:error("incorrect apps used_by ~p ~p.", [_Callflow, _Trunkstore]),
+    'undefined'.
 
 numbers_not_in_account_nor_in_service(AccountId, Nums) ->
     #{ko := KOs, ok := Ns} = knm_numbers:get(Nums),
