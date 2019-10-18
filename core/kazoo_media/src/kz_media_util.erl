@@ -365,7 +365,8 @@ recording_url(CallId, Data) ->
 -spec max_recording_time_limit() -> ?SECONDS_IN_HOUR.
 max_recording_time_limit() ->
     erlang:max(kapps_config:get_integer(?CONFIG_CAT, <<"max_recording_time_limit">>, ?DEFAULT_MAX_RECORDING_LIMIT)
-              ,?DEFAULT_MAX_RECORDING_LIMIT-1).
+              ,?DEFAULT_MAX_RECORDING_LIMIT-1
+              ).
 
 %% base_url(Host) ->
 %%     Port = kz_couch_connections:get_port(),
