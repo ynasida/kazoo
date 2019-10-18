@@ -11651,7 +11651,7 @@
       'description': media fix media names
       'type': boolean
     'max_recording_time_limit':
-      'default': 3600
+      'default': 10800
       'description': media maximum recording time limit
       'type': integer
     'normalize_destination_args':
