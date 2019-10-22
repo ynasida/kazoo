@@ -603,7 +603,7 @@ update_used_by(Numbers, App) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Apps used by in the port in document.
-%% This may not be a reliable source of `used_by` comparing to the callflow doc.
+%% This may not be a reliable source of used_by comparing to the callflow doc.
 %% @end
 %%------------------------------------------------------------------------------
 -spec app_used_by_portin(kz_term:ne_binary(), kz_json:object()) -> 'undefined' | list().
@@ -647,7 +647,7 @@ used_by_app(AccountDb, Numbers, 'trunkstore') ->
 
 %%------------------------------------------------------------------------------
 %% @doc Apps used by phe number based on callflow or trunkstore docs.
-%% This is considered as a reliable source about `used_by`.
+%% This is considered as a reliable source about used_by.
 %% @end
 %%------------------------------------------------------------------------------
 -spec used_by_which_app(kz_term:ne_binary(), kz_term:ne_binary()) -> list().
