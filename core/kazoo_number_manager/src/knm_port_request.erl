@@ -55,8 +55,6 @@
 -define(PORT_NUM_LISTING, <<"port_requests/phone_numbers_listing">>).
 -define(CALLFLOW_LIST, <<"callflows/listing_by_number">>).
 -define(TRUNKSTORE_LIST, <<"trunkstore/lookup_did">>).
--define(APP_VIEW_MAP, #{'callflow' => ?CALLFLOW_LIST
-                       ,'trunkstore' => ?TRUNKSTORE_LIST}).
 
 -type transition_response() :: {'ok', kz_json:object()} |
                                {'error', 'invalid_state_transition' | 'user_not_allowed' | kz_json:object()}.
@@ -284,11 +282,10 @@ states_to_scheduled(_AllowFromSubmitted='true') ->
 
 -spec transition_to_complete(kz_json:object(), transition_metadata()) -> transition_response().
 transition_to_complete(JObj, Metadata) ->
-    lager:info("JObj ~p~nMetadata ~p", [JObj, Metadata]),
     case transition(JObj, Metadata, [?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECTED], ?PORT_COMPLETED) of
         {'error', _}=E -> E;
         {'ok', Transitioned} ->
-            completed_port(Transitioned, JObj)
+            completed_port(Transitioned)
     end.
 
 -spec transition_to_rejected(kz_json:object(), transition_metadata()) -> transition_response().
@@ -532,15 +529,18 @@ migrate() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec completed_port(kz_json:object(), kz_json:object()) -> transition_response().
-completed_port(PortReq, JObj) ->
+-spec completed_port(kz_json:object()) -> transition_response().
+completed_port(PortReq) ->
     AccountId = kz_doc:account_id(PortReq),
     Numbers = kz_json:get_keys(kzd_port_requests:numbers(PortReq)),
-    lager:debug("transitioning numbers ~p to active", [Numbers]),
-    {'ok', App} = maybe_reconcile_app_used_by(lists:last(Numbers), AccountId, JObj),
-    Rc = transition_numbers(PortReq),
-    update_used_by(Numbers, App),
-    Rc.
+    AppUsedBy = maybe_reconcile_app_used_by(Numbers, AccountId, PortReq),
+    lager:debug("transitioning numbers ~p to active used by apps ~p", [Numbers, AppUsedBy]),
+    case transition_numbers(PortReq) of
+        {ok, Save} ->
+            update_used_by(Numbers, AppUsedBy),
+            {ok, Save};
+        _E -> _E
+    end.
 
 -spec completed_portin(kz_term:ne_binary(), kz_term:ne_binary(), transition_metadata()) -> 'ok' | {'error', any()}.
 completed_portin(Num, AccountId, #{optional_reason := OptionalReason}) ->
@@ -594,67 +594,65 @@ transition_numbers(PortReq) ->
             end
     end.
 
-update_used_by(_Numbers, 'undefined') -> ok;
+-spec update_used_by(list(), 'undefined' | kz_term:ne_binary()) -> 'ok'.
+update_used_by(_Numbers, 'undefined') -> 'ok';
 update_used_by(Numbers, App) ->
     lager:debug("update number ~p with used_by ~p", [Numbers, App]),
-    knm_numbers:assign_to_app(Numbers, App).
+    _Ok = knm_numbers:assign_to_app(Numbers, App),
+    'ok'.
 
--spec app_used_by_portin(kz_term:ne_binary(), kz_json:object()) -> 'undefined' | kz_json:object().
-app_used_by_portin(Number, JObj) ->
-    Numbers = kzd_port_requests:numbers(JObj),
-    kz_json:get_value([Number, ?USED_BY_KEY], Numbers).
+%%------------------------------------------------------------------------------
+%% @doc Apps used by in the port in document.
+%% This may not be a reliable source of `used_by` comparing to the callflow doc.
+%% @end
+%%------------------------------------------------------------------------------
+-spec app_used_by_portin(kz_term:ne_binary(), kz_json:object()) -> 'undefined' | list().
+app_used_by_portin(Numbers, JObj) ->
+    NumbersObj = kzd_port_requests:numbers(JObj),
+    [{Num, kz_json:get_value([Num, ?USED_BY_KEY], NumbersObj)} || Num <- Numbers].
 
-maybe_reconcile_app_used_by(Num, AccountId, JObj) ->
+maybe_reconcile_app_used_by(Numbers, AccountId, JObj) ->
     AccountDb = kz_util:format_account_db(AccountId),
-    PortInApp = app_used_by_portin(Num, JObj),
-    AppUsage = used_by_which_app(AccountDb, Num),
-    maybe_reconcile_app_used_by(PortInApp, AppUsage, Num, JObj).
+    PortInUsedBy = app_used_by_portin(Numbers, JObj),
+    AppUsedBy = used_by_which_app(AccountDb, Numbers),
+    _Ok=[maybe_reconcile_app(proplists:get_value(N, PortInUsedBy), App, N, JObj) || {N, App} <- AppUsedBy],
+    app_used_by(AppUsedBy).
 
-maybe_reconcile_app_used_by(App, App, _Num, _JObj) ->
+maybe_reconcile_app(App, App, _Num, _JObj) ->
     {'ok', App};
-maybe_reconcile_app_used_by(_App, App, Num, JObj) ->
-    lager:warning("port in number ~p app ~p replaced by correct app ~p", [Num, _App, App]),
+maybe_reconcile_app(_PortInApp, App, Num, JObj) ->
+    lager:warning("port in number ~p app ~p replaced by correct app ~p", [Num, _PortInApp, App]),
     _Ok = assign_to_app(Num, App, JObj),
     {'ok', App}.
 
-query_app_view(AccountDb, View, Num) ->
-    Options = [{'key', Num}],
+app_used_by([]) -> 'undefined';
+app_used_by([{_Num, App}|_T]) -> App.
+
+query_app_view(AccountDb, View, Num, App) ->
+    Options = [{'keys', Num}],
     Result = kz_datamgr:get_results(AccountDb, View, Options),
     case Result of
-        {'ok', []} ->
-            lager:debug("not found number ~p via view ~p", [Num, View]),
-            {error, not_found};
-        {'ok', Doc} ->
-            {'ok', Doc};
+        {'ok', DocsObj} ->
+            Docs = kz_json:to_proplist(DocsObj),
+            [{proplists:get_value(<<"key">>, Doc), App} || Doc <- Docs];
         E ->
-            lager:debug("Error find number ~p document view ~p error ~p", [Num, View, E]),
-            {error, E}
+            lager:debug("error find number ~p document view ~p error ~p", [Num, View, E]),
+            []
     end.
 
-is_used_by_app(AccountDb, Num, App) ->
-    View = maps:get(App, ?APP_VIEW_MAP, undefined),
-    is_used_by_app(AccountDb, View, Num, App).
+used_by_app(AccountDb, Numbers, 'callflow') ->
+    query_app_view(AccountDb, ?CALLFLOW_LIST, Numbers, <<"callflow">>);
+used_by_app(AccountDb, Numbers, 'trunkstore') ->
+    query_app_view(AccountDb, ?TRUNKSTORE_LIST, Numbers, <<"trunkstore">>).
 
-is_used_by_app(_AccountDb, undefined, _Num, _App) ->
-    lager:info('undefined app ~p', [_App]),
-    undefined;
-is_used_by_app(AccountDb, View, Num, App) ->
-    case query_app_view(AccountDb, View, Num) of
-        {'ok', _Doc} -> App;
-        _E -> undefined
-    end.
-
--spec used_by_which_app(kz_term:ne_binary(), kz_term:ne_binary()) -> 'undefined' | kz_term:ne_binary().
+%%------------------------------------------------------------------------------
+%% @doc Apps used by phe number based on callflow or trunkstore docs.
+%% This is considered as a reliable source about `used_by`.
+%% @end
+%%------------------------------------------------------------------------------
+-spec used_by_which_app(kz_term:ne_binary(), kz_term:ne_binary()) -> list().
 used_by_which_app(AccountDb, Num) ->
-    which_app(is_used_by_app(AccountDb, Num, 'callflow')
-             ,is_used_by_app(AccountDb, Num, 'trunkstore')).
-
-which_app('undefined', 'undefined') -> 'undefined';
-which_app('callflow', 'undefined') -> <<"callflow">>;
-which_app('undefined', 'trunkstore') -> <<"trunkstore">>;
-which_app(_Callflow, _Trunkstore) ->
-    lager:error("incorrect apps used_by ~p ~p.", [_Callflow, _Trunkstore]),
-    'undefined'.
+    used_by_app(AccountDb, Num, 'callflow') ++ used_by_app(AccountDb, Num, 'trunkstore').
 
 numbers_not_in_account_nor_in_service(AccountId, Nums) ->
     #{ko := KOs, ok := Ns} = knm_numbers:get(Nums),
